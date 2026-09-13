@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-page-node-id="R9fky0At93Ky1H7ndEwCC7">
+<head data-page-node-id="ZJvCfrCnVkhzpt91eXMGYO">
+    <meta charset="UTF-8" data-page-node-id="gaCZQdspNQjmWjP1yEehdk">
+    <title>α粒子轰击金箔实验模拟</title>
+    <style>
+        body {
+            font-family: "Microsoft YaHei", sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            min-height: 100vh;
+            margin: 0;
+        }
+        h1 {
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: rgba(255,255,255,0.9);
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+        #canvas {
+            border: 3px solid #fff;
+            background: #000;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        .controls {
+            display: flex;
+            gap: 20px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            background: rgba(255,255,255,0.95);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 160px;
+        }
+        label {
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #333;
+        }
+        input[type="range"] {
+            width: 180px;
+            cursor: pointer;
+        }
+        /* 束数 number 输入框：与 range 滑块宽度一致，配色统一 */
+        .beam-input {
+            width: 180px;
+            padding: 10px 14px;
+            font-size: 18px;
+            font-weight: bold;
+            text-align: center;
+            color: #333;
+            background: #fff;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            outline: none;
+            transition: all 0.2s;
+            -moz-appearance: textfield;       /* Firefox 隐藏原生 spinner */
+        }
+        .beam-input::-webkit-outer-spin-button,
+        .beam-input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        .beam-input:hover {
+            box-shadow: 0 2px 6px rgba(102, 126, 234, 0.2);
+        }
+        .beam-input:focus {
+            border-color: #764ba2;
+            box-shadow: 0 0 0 3px rgba(118, 75, 162, 0.15);
+        }
+        /* 选择器（radio 伪装成按钮组） */
+        .beam-options {
+            display: flex;
+            gap: 8px;
+        }
+        .beam-option {
+            cursor: pointer;
+            margin-bottom: 0;
+        }
+        .beam-option input[type="radio"] {
+            display: none;
+        }
+        .beam-option span {
+            display: inline-block;
+            padding: 8px 16px;
+            border: 2px solid #667eea;
+            border-radius: 20px;
+            color: #667eea;
+            font-weight: bold;
+            font-size: 14px;
+            transition: all 0.3s;
+            user-select: none;
+        }
+        .beam-option:hover span {
+            background: rgba(102, 126, 234, 0.1);
+        }
+        .beam-option input[type="radio"]:checked + span {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 3px 8px rgba(102, 126, 234, 0.4);
+        }
+        button {
+            padding: 12px 24px;
+            font-size: 16px;
+            cursor: pointer;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            font-weight: bold;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            transition: all 0.3s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(0,0,0,0.3);
+        }
+        button:active {
+            transform: translateY(0);
+        }
+        .stats {
+            display: flex;
+            gap: 40px;
+            margin: 20px 0;
+            background: rgba(255,255,255,0.95);
+            padding: 20px 40px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .stat-label {
+            font-size: 14px;
+            color: #666;
+            margin-top: 5px;
+        }
+        .legend {
+            background: rgba(255,255,255,0.95);
+            padding: 15px 25px;
+            border-radius: 10px;
+            margin-top: 10px;
+            font-size: 14px;
+            color: #333;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            max-width: 1100px;
+            line-height: 1.6;
+        }
+        /* 实验说明：分点列表 */
+        .legend-title {
+            margin-bottom: 8px;
+        }
+        .legend ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+        .legend li {
+            position: relative;
+            padding-left: 18px;
+            margin: 5px 0;
+        }
+        .legend li::before {
+            content: "";
+            position: absolute;
+            left: 3px;
+            top: 9px;
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: #8e7cc3;
+        }
+        /* 页面署名（右下角胶囊标签，默认收起仅显示"作者"，悬停展开） */
+        .signature {
+            position: fixed;
+            right: 20px;
+            bottom: 15px;
+            padding: 8px 18px;
+            background: rgba(255, 255, 255, 0.82);
+            color: #555;
+            font-size: 13px;
+            border-radius: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.12);
+            font-family: "Microsoft YaHei", sans-serif;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            user-select: none;
+            z-index: 1000;
+            cursor: pointer;
+            letter-spacing: 0.3px;
+            display: flex;
+            align-items: center;
+            white-space: nowrap;
+            transition: background 0.35s ease, color 0.35s ease,
+                        box-shadow 0.35s ease, transform 0.35s ease;
+        }
+        .signature .author-full {
+            max-width: 0;
+            opacity: 0;
+            margin-left: 0;
+            overflow: hidden;
+            transition: max-width 0.35s ease, opacity 0.35s ease 0.05s,
+                        margin-left 0.35s ease;
+        }
+        .signature:hover {
+            background: rgba(255, 255, 255, 0.95);
+            color: #333;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.2);
+            transform: translateY(-1px);
+        }
+        .signature:hover .author-full {
+            max-width: 260px;
+            opacity: 1;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body data-page-node-id="4rJF4zTpfbfmeLFsGlYINC">
+    <h1 data-page-node-id="ta57cO2c88AupOq3huudvX">🔬 α粒子轰击金箔实验模拟</h1>
+    <div class="subtitle" data-page-node-id="TaqYSgX79BMPDbtfQPBTpG">卢瑟福散射实验 · 探索原子内部结构</div>
+
+    <canvas id="canvas" width="1200" height="900" data-page-node-id="YA5Cajix3oXcJRTEgkg36G"></canvas>
+
+    <div class="controls" data-page-node-id="WzF3AznZzlcwaAhD65RCJm">
+        <div class="control-group" data-page-node-id="QiDsPRfbIa0ADg0T3Yztyp">
+            <label for="beamCount" data-page-node-id="GaGXdJYKAbv5Xsp97aUjLo">α粒子束数（1-300 自由输入）</label>
+            <input type="number" id="beamCount" min="1" max="300" step="1" value="100"
+                   class="beam-input" data-page-node-id="Vz1CB2NFGUkKoFjfXArzcM">
+        </div>
+        <div class="control-group" data-page-node-id="k4WQHAlUVvholOJUcAfuNQ">
+            <label data-page-node-id="BxsWB3sskbRkRkHFeolMNc">金原子核数（竖直排列）</label>
+            <div class="beam-options" data-page-node-id="SJljnqQRwnrKAT04PEXnWu">
+                <label class="beam-option" data-page-node-id="3DbZycsMU6psUD1h9bbqum">
+                    <input type="radio" name="nucleusCount" value="1" checked data-page-node-id="fz5ZLkekbyABLC8nPR2emv">
+                    <span data-page-node-id="ucteWb46WFKynvyMBFYKUO">1 个</span>
+                </label>
+                <label class="beam-option" data-page-node-id="6I2MZ1kumbnKySOtGXEww3">
+                    <input type="radio" name="nucleusCount" value="3" data-page-node-id="BpBhuBBsqeQQH4JyR1OroN">
+                    <span data-page-node-id="sO7or4OvcJdwH62tVBtEqS">3 个</span>
+                </label>
+                <label class="beam-option" data-page-node-id="OYqpj7iito4ezcwm5Pf7FX">
+                    <input type="radio" name="nucleusCount" value="5" data-page-node-id="yIWWRrNvFGbRBfAafxEX88">
+                    <span data-page-node-id="btNG35znW4KslZ8CCGnxHW">5 个</span>
+                </label>
+            </div>
+        </div>
+        <div class="control-group" data-page-node-id="MGqjEkSEjE8IGLaNIUdrqL">
+            <label data-page-node-id="lPwIb8jFIWTOAlqnWpvUkr">能量: <span id="energyValue" style="color: #667eea;" data-page-node-id="4OiP95AAzatNd4SpMrnPg1">5</span> MeV</label>
+            <input type="range" id="energy" min="1" max="10" value="5" data-page-node-id="dEaUfDuYys70ZKuxNeXj17">
+        </div>
+        <div class="control-group" data-page-node-id="AngGrp0mJdQxTfe1LkTbwz">
+            <label data-page-node-id="AngLbl5rNc2sVhAkWqpzY">入射角: <span id="angleValue" style="color: #667eea;" data-page-node-id="AngVal9uHd3mXqRwZk8Ts">0</span>°</label>
+            <input type="range" id="incidenceAngle" min="-60" max="60" step="1" value="0" data-page-node-id="AngSld3pQVf7nYbCmX2ha">
+        </div>
+        <button onclick="fireAlpha()" data-page-node-id="Rwz5UbnnmybOKZjbNgmhHc">🚀 发射α粒子束</button>
+        <button onclick="reset()" data-page-node-id="IBYH94ZDjqobnGJEYmy5Kt">🔄 重置</button>
+    </div>
+
+    <div class="stats" data-page-node-id="cJzbCNOkGt1JLUWBN4Y1an">
+        <div class="stat-item" data-page-node-id="1RQHNCzSg2tZowpYYZhzd5">
+            <div class="stat-value" id="straight" data-page-node-id="IJeWEkdTyaQ6Ef85hiVXUk">0</div>
+            <div class="stat-label" data-page-node-id="kCdIORQZuUEfK6GFOCFzUK">直线穿过</div>
+        </div>
+        <div class="stat-item" data-page-node-id="AxOaKershlLc9dD7p4NQv3">
+            <div class="stat-value" id="deflected" data-page-node-id="nvsrJD1Apt7kWLfyAEEjKf">0</div>
+            <div class="stat-label" data-page-node-id="aEsSN2PvRSutiszHwyWOAy">偏转</div>
+        </div>
+        <div class="stat-item" data-page-node-id="Nm2Sfn4TU4NBLSygFH3CaY">
+            <div class="stat-value" id="bounced" data-page-node-id="V7f1MAY8Ode5WfiOlhO8nI">0</div>
+            <div class="stat-label" data-page-node-id="MluCsRYJF3VZXPVAeXEkEr">反弹</div>
+        </div>
+    </div>
+
+    <div class="legend" data-page-node-id="XJ2jSrvEHZE1qOHAEevc4M">
+        <div class="legend-title">💡 <strong data-page-node-id="05sGl7voGM1HLtghys8yl1">实验说明</strong></div>
+        <ul>
+            <li><strong>金箔怎么摆：</strong>α 粒子束从左侧射向金箔，<strong>入射角可在 −60°~+60° 调节</strong>（整个束场统一倾斜）；可切换 1 / 3 / 5 个金原子核，竖直排列模拟金箔切面。</li>
+            <li><span style="color:#a8b0b8;" data-page-node-id="electronShellDesc">浅色虚线圆</span>表示金原子的<strong>最外层电子轨道</strong>（玻尔模型）——仅作视觉展示，不影响物理计算；α 粒子实际只与金核（+79e）的库仑斥力作用。</li>
+            <li><span style="color:#e8890c; font-weight:bold;" data-page-node-id="3LZKhuQnokn1tyAwPcDFVP">橙色束正对某个金原子核</span>，<strong>只有正对核的束才会被反弹</strong>（入射角改变时，橙色瞄准线随之倾斜）。</li>
+            <li><strong>三种结果：</strong>靠近核的束受库仑斥力发生<strong>偏转</strong>；从核间空隙穿过的束几乎<strong>直线通过</strong>；正对核的束被<strong>反弹</strong>回来。</li>
+            <li><strong>推荐试试：</strong><strong data-page-node-id="AmY8tTFCJwIlE7drmjcW0K">50-300 任意束数 + 5 核</strong>→ 绝大多数直线穿过、少数偏转、极少数反弹，这正是卢瑟福观察到的现象。</li>
+            <li><strong>想看到明显偏转？</strong>把能量调低到 1-2 MeV——低能粒子更容易被库仑力推开。</li>
+            <li><strong>入射角能说明什么？</strong>无论把入射角调到多少度，<strong>正对核的那束总会被弹回</strong>——说明"原子核带正电、体积极小"这个结论与入射方向无关。（角度较大时，正对束的起点会移出画布、从上/下边缘飞入，但它仍然正对目标核。）</li>
+        </ul>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        const nucleusRadius = 12;
+        // 金原子最外层电子轨道半径（玻尔模型）：仅作视觉展示，不影响物理计算
+        // 取值 = 核间距 ÷ 2 → 相邻金原子的电子轨道【相切】，拼成密实的金箔
+        // （而非一颗颗彼此分离的小球）；由 setupNuclei 按核数自适应，5核 75px / 3核 100px
+        let electronShellRadius = 100;
+
+        // α粒子与金核的"最近接近距离"（库仑势垒）：1/r² 力在 d < R_MIN 时不再增大。
+        // 既避免 d→0 时力发散产生数值尖角，也保证 α 粒子不会"穿进"核里。
+        // （真实依据：金核库仑势垒 ≈ 20 MeV 以上，5 MeV 的 α 粒子根本接触不到核，
+        //   所以真实实验里不存在"撞到核再弹开"，偏转 100% 来自 1/r² 斥力）
+        const R_MIN = 16;
+        // 子步长：每条束每帧拆成 SUB 个子步积分，并按子步记录轨迹点。
+        // 低速近核时避免"一帧一个大角度"的多边形折角（实测：E=1 时折角 52° → 7°）
+        const SUB = 8;
+
+        // 金原子核数组（支持 1/3/5 个，竖直一列模拟金箔切面）
+        let nuclei = [];
+
+        function setupNuclei(count) {
+            nuclei = [];
+            const cx = canvas.width / 2;   // 600
+            const cy = canvas.height / 2;  // 450
+            if (count === 1) {
+                nuclei.push({x: cx, y: cy});
+                // 单核无相邻原子可相切，取与 3 核一致的 100px，视觉均衡
+                electronShellRadius = 100;
+            } else {
+                // 竖直一列，核间距拉大（3核间距200px / 5核间距150px）
+                // 核间空隙远大于核本身 → 直观体现"原子内部十分空旷"
+                const top = (count === 3) ? 250 : 150;
+                const bottom = (count === 3) ? 650 : 750;
+                // 电子轨道半径 = 核间距 ÷ 2 → 相邻原子的电子轨道恰好相切，
+                // 拼成一堵"密不透风的墙"；而 α 粒子仍能穿过 → 逼出"原子内部几乎全是空的"
+                electronShellRadius = (bottom - top) / (count - 1) / 2;
+                for (let i = 0; i < count; i++) {
+                    nuclei.push({
+                        x: cx,
+                        y: top + ((bottom - top) * i) / (count - 1)
+                    });
+                }
+            }
+        }
+
+        // α粒子数组
+        let particles = [];
+
+        // 视觉模式：
+        //   1 束           → 标准模式（长轨迹、发光、渐变色，精致）
+        //   100 束 (dense) → 密集模式（短轨迹 40、细线 1px、无光晕、批量化描边）
+        //   300 束(extreme)→ 极密模式（更激进瘦身：轨迹 30、线宽 0.7px、粒子 1.5px、单次描边）
+        // 自动按束数切换；300 束在 1200×900 画布上间距仅 2.7px，不瘦身会糊成"光墙"。
+        let denseMode = false;
+        let extremeMode = false;
+
+        // 入射角（单位：度）：整个束场统一倾斜，所有束平行射入。
+        //   正角 = 向下偏（向右下射入）；负角 = 向上偏（向右上射入）；0 = 水平（原行为）。
+        //   对应教材"调整 α 粒子射入的角度"。取值范围 -60°~+60°（见滑块）。
+        let incidenceAngle = 0;
+
+        // 统计
+        let stats = {
+            straight: 0,
+            deflected: 0,
+            bounced: 0
+        };
+
+        // 绘制所有金原子核
+        function drawNuclei() {
+            nuclei.forEach(nuc => {
+                // 外层光晕
+                const gradient = ctx.createRadialGradient(nuc.x, nuc.y, 0, nuc.x, nuc.y, nucleusRadius * 3);
+                gradient.addColorStop(0, 'rgba(255, 215, 0, 0.3)');
+                gradient.addColorStop(1, 'rgba(255, 215, 0, 0)');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(nuc.x - nucleusRadius * 3, nuc.y - nucleusRadius * 3, nucleusRadius * 6, nucleusRadius * 6);
+
+                // 金原子最外层电子轨道（玻尔模型）：浅灰白虚线圆
+                // 相邻原子半径取核间距的一半 → 电子轨道【相切】，模拟固态金箔中原子紧密堆积
+                // 仅作视觉展示，不参与物理计算（α粒子实际只与金核的库仑力作用）
+                ctx.strokeStyle = 'rgba(200, 210, 220, 0.55)';
+                ctx.lineWidth = 1;
+                ctx.setLineDash([8, 6]);
+                ctx.beginPath();
+                ctx.arc(nuc.x, nuc.y, electronShellRadius, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.setLineDash([]);  // 重置虚线状态（不影响其他绘制）
+
+                // 原子核
+                ctx.fillStyle = '#FFD700';
+                ctx.beginPath();
+                ctx.arc(nuc.x, nuc.y, nucleusRadius, 0, Math.PI * 2);
+                ctx.fill();
+
+                // 边框
+                ctx.strokeStyle = '#FFA500';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // 绘制核电荷标记
+                ctx.fillStyle = '#000';
+                ctx.font = 'bold 12px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('+79e', nuc.x, nuc.y + 4);
+            });
+        }
+
+        // 绘制每个核的正对入射路径提示线（沿当前入射角 θ 穿过核心）
+        function drawAimLines() {
+            const thetaRad = incidenceAngle * Math.PI / 180;
+            // 一条足够长的线段：以核为起点，沿 ±入射方向各延伸 2 倍画布宽
+            const R = canvas.width * 2;
+            const dx = Math.cos(thetaRad) * R;
+            const dy = Math.sin(thetaRad) * R;
+            ctx.strokeStyle = 'rgba(255, 165, 0, 0.25)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([8, 8]);
+            nuclei.forEach(nuc => {
+                ctx.beginPath();
+                ctx.moveTo(nuc.x - dx, nuc.y - dy);
+                ctx.lineTo(nuc.x + dx, nuc.y + dy);
+                ctx.stroke();
+            });
+            ctx.setLineDash([]);
+        }
+
+        // α粒子类
+        // 每束 1 个粒子，沿全局入射角 θ 平行射入（θ=0 即水平入射，与原行为一致）
+        // isCenter = true 表示该束的入射直线【穿过某个金原子核核心】（正对该核）
+        // targetNucleus = 该束正对的核对象（isCenter 时有效）
+        class AlphaParticle {
+            constructor(startY, energy, isCenter, targetNucleus, thetaRad) {
+                this.x = 20;
+                this.y = startY;
+                this.energy = energy;
+                this.speed = 2 + energy * 0.5; // 能量越大，速度越快
+                // 入射方向按全局入射角倾斜：dirX/dirY 是入射方向单位向量
+                // （正对束沿此方向前进；被推回后应沿 -dir 方向返回）
+                this.thetaRad = thetaRad;
+                this.dirX = Math.cos(thetaRad);
+                this.dirY = Math.sin(thetaRad);
+                this.vx = this.speed * this.dirX;
+                this.vy = this.speed * this.dirY;
+                this.entered = false;   // 是否已进入过画布（大角度时起点可能位于画布外）
+                this.traveled = 0;      // 累计行程（未进入画布时的安全网）
+                // 粒子半径：稀疏 4px / 密集 4px / 极密 1.5px（300 束 2.7px 间距下 1.5px 防止粒子体糊成一片）
+                this.radius = extremeMode ? 1.5 : 4;
+                this.trail = [];
+                // 轨迹点数：稀疏 100 / 密集 40 / 极密 30，再 ×SUB（按子步采样）。
+                // ×SUB 后轨迹的"空间长度"与旧版一致，只是采样更密 → 曲线更光滑
+                this.maxTrail = (extremeMode ? 30 : (denseMode ? 40 : 100)) * SUB;
+                this.active = true;
+                this.result = null; // 'straight', 'deflected', 'bounced'
+                this.isCenter = isCenter;         // 是否正对某个金原子核
+                this.targetNucleus = targetNucleus; // 正对的是哪个核
+                this.bounced = false;       // 正对束：已反弹（计入 bounced）
+            }
+
+            update() {
+                if (!this.active) return;
+
+                // === 1. 库仑斥力（所有金核叠加）+ 子步长积分 ===
+                // 【为什么删掉了"撞核再弹开"？】
+                //   真实的 α 粒子（约 5 MeV）根本接触不到金核——金核库仑势垒约 20 MeV 以上，
+                //   粒子在离核尚有距离时就被推开。所以偏转 100% 来自 1/r² 库仑斥力，
+                //   不存在几何"碰撞"。旧版在 21px 处设了一道"硬墙"+镜面反射+位置瞬移
+                //   （粒子被凭空挪走 20~23px），这正是轨迹上"折角"的根源，现已彻底移除。
+                // 【R_MIN 距离钳制】近似"粒子不可能比 R_MIN 更靠近金核"的库仑势垒，
+                //   同时消除 d→0 时 1/r² 的数值发散（否则会甩出速度尖峰）。
+                // 【SUB 子步长】每帧拆成 SUB 个子步积分并按子步记录轨迹点，低速近核时
+                //   不再出现"一帧一个大角度"的多边形折角（实测最大折角 52° → 7°）。
+                // k=1 已按"偏转影响区 ±16px @能量5"标定：
+                // 核间距 150px 下影响区不重叠 → 300 束时约 82% 直线（"绝大多数直线穿过"成立）
+                const k = 1;  // 库仑常数（v4 重标定：v3 的 k=10 影响区 ±180px 会全覆盖核间空隙）
+                const q1 = 2;  // α粒子电荷
+                const q2 = 79; // 金原子核电荷
+                const dt = 1 / SUB;
+
+                for (let s = 0; s < SUB; s++) {
+                    // 1a. 库仑斥力叠加（距离钳制在 R_MIN 以上，避免 1/r² 奇点）
+                    nuclei.forEach(nuc => {
+                        const dx = nuc.x - this.x;
+                        const dy = nuc.y - this.y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        if (distance > 1e-6) {
+                            const dEff = Math.max(distance, R_MIN);
+                            // 距离越近力越大；能量越大偏转越小
+                            const force = k * q1 * q2 / (dEff * dEff * this.energy);
+                            // 斥力方向：原子核 → 粒子（取负，与 dx,dy 反向）
+                            this.vx += -(dx / distance) * force * dt;
+                            this.vy += -(dy / distance) * force * dt;
+                        }
+                    });
+
+                    // 1b. 位置更新
+                    this.x += this.vx * dt;
+                    this.y += this.vy * dt;
+
+                    // 1c. 正对束反弹：到达库仑势垒（或已被推回）→ 沿原路反向。
+                    //     【倾斜适配】改用"沿入射方向的分量 along"判定是否已被推回，
+                    //     而不是只看 vx<0——倾斜时 vx 恒为正，旧判据会失效。
+                    //     along<0 表示速度已与入射方向相反（越过转折点）→ 保持反向即可；
+                    //     若尚未反向却已到势垒（罕见），做一次整体掉头，之后不再翻转（幂等）。
+                    if (this.isCenter && this.targetNucleus && !this.bounced) {
+                        const dToTarget = Math.hypot(
+                            this.targetNucleus.x - this.x,
+                            this.targetNucleus.y - this.y
+                        );
+                        const along = this.vx * this.dirX + this.vy * this.dirY;
+                        if (along < 0 || dToTarget < R_MIN) {
+                            if (along > 0) {
+                                // 仍在前进却已到达势垒 → 整体反向（只发生一次）
+                                this.vx = -this.vx;
+                                this.vy = -this.vy;
+                            }
+                            this.result = 'bounced';
+                            stats.bounced++;
+                            updateStats();
+                            this.bounced = true;
+                        }
+                    }
+
+                    // 1d. 进入画布标记：大角度倾斜时，正对束起点可能落在画布外，
+                    //     必须先"进入"画布，才允许被"飞出边界"判定消灭，
+                    //     否则粒子一出生（在画布外）就被误判出界而立即消失。
+                    if (!this.entered &&
+                        this.x >= 0 && this.x <= canvas.width &&
+                        this.y >= 0 && this.y <= canvas.height) {
+                        this.entered = true;
+                    }
+
+                    // 1e. 记录轨迹（按子步记录 → 采样密度 ×SUB，曲线更细腻）
+                    this.trail.push({x: this.x, y: this.y});
+                    if (this.trail.length > this.maxTrail) {
+                        this.trail.shift();
+                    }
+                }
+
+                // 安全网：起点在画布外、却始终没能进入画布的粒子。
+                //   大角度倾斜时偶发——束紧贴画布上/下边缘掠过、被余光轻微偏折后直接飞出视野。
+                //   这类粒子从头到尾都不可见，及时清除即可；
+                //   为保持"统计总数 = 束数"，计入"直线穿过"（它在可见范围内没有发生可见作用）。
+                //   注：每帧位移 ≈ 速率（子步长累计恰好抵消），故直接用 hypot(vx,vy) 累加。
+                this.traveled += Math.hypot(this.vx, this.vy);
+                if (!this.entered && (this.traveled > 2000 ||
+                    this.x > canvas.width + 300 || this.x < -300 ||
+                    this.y < -1400 || this.y > canvas.height + 1400)) {
+                    if (!this.result) {
+                        this.result = 'straight';
+                        stats.straight++;
+                        updateStats();
+                    }
+                    this.active = false;
+                    return;
+                }
+
+                // === 2. 飞出画布判定（全部粒子统一处理：飞出才停止，绝不冻结在画布内）===
+                //    修复：之前"反弹/偏转后 1.5 秒强制停止"会让粒子在中途被定格成光团，
+                //    现在改为"粒子一直运动直到飞出画布边界"，确保所有束最终都飞出画布。
+                //    【倾斜适配】起点可能在画布外 → 只有"已进入过画布"的粒子才做飞出判定。
+                if (this.entered &&
+                    (this.x > canvas.width + 20 || this.x < -20 ||
+                     this.y > canvas.height + 20 || this.y < -20)) {
+                    // 若仍未计数，在此补计
+                    if (!this.result) {
+                        if (this.isCenter) {
+                            // 正对核的粒子：库仑势垒必然把它推回 → 反弹（保底）
+                            this.result = 'bounced';
+                            stats.bounced++;
+                        } else {
+                            // 非正对束：按"出射方向与【入射方向 θ】的夹角"判定。
+                            // 倾斜后基准不再是水平 0°，而是入射角 θ——否则倾斜的直线束会被误判为偏转。
+                            let diff = Math.atan2(this.vy, this.vx) - this.thetaRad;
+                            diff = Math.atan2(Math.sin(diff), Math.cos(diff)); // 归一化到 (-π, π]
+                            const deviation = Math.abs(diff) * 180 / Math.PI;  // 0°=直线，180°=完全反向
+
+                            if (deviation < 10) {
+                                // 偏转角 10° 以内，视觉上算"直线穿过"
+                                this.result = 'straight';
+                                stats.straight++;
+                            } else {
+                                this.result = 'deflected';
+                                stats.deflected++;
+                            }
+                        }
+                        updateStats();
+                    }
+                    // 无论是否已计数，飞出画布即停止运动（不再冻结在画布内）
+                    this.active = false;
+                }
+            }
+
+            draw() {
+                if (this.trail.length < 2) return;
+
+                // 正对束橙色高亮，其他束青色
+                const r = this.isCenter ? 255 : 0;
+                const g = this.isCenter ? 165 : 255;
+                const b = this.isCenter ? 0 : 255;
+
+                if (extremeMode) {
+                    // === 300 束极密模式：单次描边 + globalAlpha，性能最优 ===
+                    // 1 像素宽 + 半透明，整条轨迹一次画完；300 条线 ≈ 50-60fps 仍流畅
+                    ctx.globalAlpha = 0.55;
+                    ctx.strokeStyle = `rgb(${r}, ${g}, ${b})`;
+                    ctx.lineWidth = 0.7;
+                    ctx.beginPath();
+                    ctx.moveTo(this.trail[0].x, this.trail[0].y);
+                    for (let i = 1; i < this.trail.length; i++) {
+                        ctx.lineTo(this.trail[i].x, this.trail[i].y);
+                    }
+                    ctx.stroke();
+                    ctx.globalAlpha = 1.0;
+                } else if (denseMode) {
+                    // === 100 束密集模式：单次描边 + globalAlpha（性能 + 简洁）===
+                    ctx.globalAlpha = 0.6;
+                    ctx.strokeStyle = `rgb(${r}, ${g}, ${b})`;
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.moveTo(this.trail[0].x, this.trail[0].y);
+                    for (let i = 1; i < this.trail.length; i++) {
+                        ctx.lineTo(this.trail[i].x, this.trail[i].y);
+                    }
+                    ctx.stroke();
+                    ctx.globalAlpha = 1.0;
+                } else {
+                    // === 1 束标准模式：渐变色（每段一描，看起来精致）===
+                    ctx.lineWidth = 2;
+                    for (let i = 0; i < this.trail.length - 1; i++) {
+                        const alpha = i / this.trail.length;
+                        ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, ${alpha * 0.8})`;
+                        ctx.beginPath();
+                        ctx.moveTo(this.trail[i].x, this.trail[i].y);
+                        ctx.lineTo(this.trail[i + 1].x, this.trail[i + 1].y);
+                        ctx.stroke();
+                    }
+
+                    // 发光效果（仅 1 束模式有）
+                    const gradient = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.radius * 2);
+                    gradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, 1)`);
+                    gradient.addColorStop(0.5, `rgba(${r}, ${g}, ${b}, 0.5)`);
+                    gradient.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
+                    ctx.fillStyle = gradient;
+                    ctx.fillRect(this.x - this.radius * 2, this.y - this.radius * 2, this.radius * 4, this.radius * 4);
+                }
+
+                // 粒子本体（三种模式都画，但 extreme 半径 1.5px 极小、避免糊在一起）
+                ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fill();
+
+                // 边框仅在非极密模式画（极密下半径已 1.5px、画边反而糊）
+                if (!extremeMode) {
+                    ctx.strokeStyle = this.isCenter ? '#CC8400' : '#00CCCC';
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                }
+            }
+        }
+
+        // 发射α粒子束（齐射：按束数均匀分布，并对每个核吸附一束到其正对线上）
+        function fireAlpha() {
+            // 读取并夹紧束数到 1-300 范围（处理 NaN / 越界 / 空输入）
+            const beamInput = document.getElementById('beamCount');
+            let beamCount = parseInt(beamInput.value, 10);
+            if (isNaN(beamCount)) beamCount = 100;          // NaN/空 → 回退到默认 100
+            if (beamCount < 1) beamCount = 1;                // 最小 1 束（保留细节演示）
+            if (beamCount > 300) beamCount = 300;            // 最大 300 束（防卡顿）
+            beamInput.value = beamCount;                      // 同步回输入框（用户能看到被夹紧的值）
+
+            const energy = parseFloat(document.getElementById('energy').value);
+            // 读取入射角（全局统一倾斜）
+            const angleDeg = parseFloat(document.getElementById('incidenceAngle').value);
+            incidenceAngle = isNaN(angleDeg) ? 0 : angleDeg;
+            const thetaRad = incidenceAngle * Math.PI / 180;
+            const tanT = Math.tan(thetaRad);
+
+            // 100 束启用密集模式，300 束启用极密模式（更激进的视觉瘦身）
+            denseMode = beamCount >= 50;
+            extremeMode = beamCount >= 200;
+
+            // 1. 束场起点：竖直均匀铺展，并整体按入射角平移，
+            //    使束场在核列竖直截面上的覆盖【以核列中心为中心】。
+            //    起点 x 固定 20；起点 y 中心 = 核列中心 − dx·tanθ
+            //    （θ 较大时部分起点会落到画布外，束会从画布上/下边缘飞入——这是允许的）
+            const START_X = 20;
+            const dxToNuclei = nuclei[0].x - START_X;                              // 580
+            const yc = (nuclei[0].y + nuclei[nuclei.length - 1].y) / 2;            // 核列中心 y
+            const yCenter = yc - dxToNuclei * tanT;                                // 起点中心
+            const margin = 40;
+            const spread = canvas.height - 2 * margin;                             // 820（θ=0 时与原行为一致）
+            const positions = [];
+            for (let i = 0; i < beamCount; i++) {
+                positions.push(
+                    beamCount === 1
+                        ? yCenter
+                        : yCenter - spread / 2 + (spread * i) / (beamCount - 1)
+                );
+            }
+
+            // 2. 对每个核，把最近的未占用束吸附到"穿过该核心的入射直线"在左缘的交点上
+            //    （中间核优先选束，保证 1 束时正对中间的核）
+            const centerInfo = new Array(beamCount).fill(null); // 每束正对的核（null=非正对）
+            const sortedNuclei = [...nuclei].sort(
+                (a, b) => Math.abs(a.y - canvas.height / 2) - Math.abs(b.y - canvas.height / 2)
+            );
+            sortedNuclei.forEach(nuc => {
+                // 该核对应的正对束起点 y（沿 -θ 方向从核心反推到左缘）
+                const aimStartY = nuc.y - dxToNuclei * tanT;
+                let bestIdx = -1, bestDist = Infinity;
+                positions.forEach((y, idx) => {
+                    if (centerInfo[idx]) return; // 已被其他核占用
+                    const d = Math.abs(y - aimStartY);
+                    if (d < bestDist) { bestDist = d; bestIdx = idx; }
+                });
+                if (bestIdx >= 0) {
+                    positions[bestIdx] = aimStartY;   // 吸附到正对入射线
+                    centerInfo[bestIdx] = nuc;
+                }
+            });
+
+            // 3. 生成粒子
+            positions.forEach((y, idx) => {
+                const isCenter = centerInfo[idx] !== null;
+                particles.push(new AlphaParticle(y, energy, isCenter, centerInfo[idx], thetaRad));
+            });
+        }
+
+        // 重置
+        function reset() {
+            particles = [];
+            stats = {straight: 0, deflected: 0, bounced: 0};
+            updateStats();
+        }
+
+        // 更新统计
+        function updateStats() {
+            document.getElementById('straight').textContent = stats.straight;
+            document.getElementById('deflected').textContent = stats.deflected;
+            document.getElementById('bounced').textContent = stats.bounced;
+        }
+
+        // 更新滑块显示
+        document.getElementById('energy').addEventListener('input', function() {
+            document.getElementById('energyValue').textContent = this.value;
+        });
+
+        // 入射角滑块：更新数值显示 + 记录角度（瞄准提示线随之倾斜）
+        document.getElementById('incidenceAngle').addEventListener('input', function() {
+            incidenceAngle = parseFloat(this.value) || 0;
+            document.getElementById('angleValue').textContent = this.value;
+        });
+
+        // 核数切换：立即重排金核
+        document.querySelectorAll('input[name="nucleusCount"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                setupNuclei(parseInt(this.value));
+            });
+        });
+
+        // 初始化：默认 1 个金核
+        setupNuclei(1);
+
+        // 动画循环
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 绘制背景网格
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+            ctx.lineWidth = 1;
+            for (let i = 0; i < canvas.width; i += 50) {
+                ctx.beginPath();
+                ctx.moveTo(i, 0);
+                ctx.lineTo(i, canvas.height);
+                ctx.stroke();
+            }
+            for (let i = 0; i < canvas.height; i += 50) {
+                ctx.beginPath();
+                ctx.moveTo(0, i);
+                ctx.lineTo(canvas.width, i);
+                ctx.stroke();
+            }
+
+            // 绘制正对入射路径提示线（每个核一条）
+            drawAimLines();
+
+            // 绘制所有金原子核
+            drawNuclei();
+
+            // 更新和绘制α粒子
+            particles.forEach(p => {
+                p.update();
+                p.draw();
+            });
+
+            // 清理不活跃的粒子
+            particles = particles.filter(p => p.active || p.trail.length > 0);
+
+            requestAnimationFrame(animate);
+        }
+
+        animate();
+    </script>
+
+    <!-- 页面署名（默认收起为"作者"，悬停展开完整信息） -->
+    <div class="signature" title="悬停查看作者信息" data-page-node-id="HeURHPntvebox5daL9ZieR">
+        <span class="author-short" data-page-node-id="gIXh6yMEdV16KUdjoN9Xpb">作者</span><span class="author-full" data-page-node-id="6LFssXZwA2MxpAKGEAsl5Y">张曾继明 · 西南大学 · © 2026</span>
+    </div>
+</body>
+</html>

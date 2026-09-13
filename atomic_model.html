@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-page-node-id="TS8zadd9JGejNB9mNCcJM5">
+<head data-page-node-id="hHwy5T2NWFrRrKx6JyfIxN">
+    <meta charset="UTF-8" data-page-node-id="yDakIQRcQLuu6BitDgs4Jc">
+    <title>核式原子结构模型</title>
+    <style>
+        body {
+            font-family: "Microsoft YaHei", sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            min-height: 100vh;
+            margin: 0;
+        }
+        h1 {
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: rgba(255,255,255,0.9);
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+        #canvas {
+            border: 3px solid #fff;
+            background: radial-gradient(circle, #1a1a2e 0%, #0f0f1e 100%);
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        .controls {
+            display: flex;
+            gap: 20px;
+            margin: 20px 0;
+            background: rgba(255,255,255,0.95);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            align-items: center;
+        }
+        label {
+            font-weight: bold;
+            color: #333;
+        }
+        select {
+            padding: 10px 15px;
+            font-size: 16px;
+            border-radius: 8px;
+            border: 2px solid #667eea;
+            background: white;
+            cursor: pointer;
+            font-weight: bold;
+            color: #333;
+        }
+        .info {
+            margin: 20px 0;
+            padding: 20px 30px;
+            background: rgba(255,255,255,0.95);
+            border-radius: 10px;
+            font-size: 16px;
+            line-height: 1.8;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            min-width: 300px;
+        }
+        .info strong {
+            color: #667eea;
+            font-size: 20px;
+        }
+        .electron-config {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .legend {
+            background: rgba(255,255,255,0.95);
+            padding: 15px 25px;
+            border-radius: 10px;
+            margin-top: 10px;
+            font-size: 14px;
+            color: #333;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            max-width: 600px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body data-page-node-id="zbBE1Q8IQGQuVgvUEJuHyn">
+    <h1 data-page-node-id="zIzVVCsFRv4hPXtF6IGZXA">⚛️ 核式原子结构模型</h1>
+    <div class="subtitle" data-page-node-id="1Z5HRPmLBCZTz7WUg55gzE">卢瑟福原子模型 · 电子绕核运动</div>
+
+    <canvas id="canvas" width="800" height="600" data-page-node-id="4Iem9cQghvBXHgah6RFGtA"></canvas>
+
+    <div class="controls" data-page-node-id="PWoktYtl3hoVGEGML0sACa">
+        <label data-page-node-id="u3WaNjo6imgnCj8GxDXKZQ">选择元素:</label>
+        <select id="element" onchange="changeElement()" data-page-node-id="r2UgFDj3pvazEX5eVlYAdp">
+            <option value="H" data-page-node-id="elr94BYwW5TppF1nsLuO5j">氢 (H) - 1个电子</option>
+            <option value="He" data-page-node-id="8HcDVC7G4Aj8nQ4cqoQVRk">氦 (He) - 2个电子</option>
+            <option value="Li" selected data-page-node-id="xBHWt69RZO60ImaeXF1Buy">锂 (Li) - 3个电子</option>
+            <option value="Be" data-page-node-id="hKCkegwstots2tUfe4K6V6">铍 (Be) - 4个电子</option>
+            <option value="B" data-page-node-id="GrQIdIJwGPZSb6m75yVpOV">硼 (B) - 5个电子</option>
+            <option value="C" data-page-node-id="7Tfd1rQGpOx2cO4dHoD7m2">碳 (C) - 6个电子</option>
+            <option value="N" data-page-node-id="iOYJytkmCspQeq3sJJO4Gn">氮 (N) - 7个电子</option>
+            <option value="O" data-page-node-id="OI1OfXkuGVYoB0k2NExLZq">氧 (O) - 8个电子</option>
+        </select>
+    </div>
+
+    <div class="info" id="info" data-page-node-id="9nToe8YEEIFmmIMk9a1h6e">
+        <strong data-page-node-id="EXLSd892Ic4FW7aBlr4dy9">锂 (Li)</strong><br data-page-node-id="VuTp81l8OLLPSTGm8nvcTL">
+        原子序数: 3<br data-page-node-id="rekEBxmq9gahcWEKDzJjOk">
+        电子排布: <span class="electron-config" data-page-node-id="ol4V8Jb9eUpQs2SVzQRHHf">2, 1</span><br data-page-node-id="dl0ngoBDkJ9bYR39lw0ECY">
+        原子核: 3个质子（带3个单位正电荷）
+    </div>
+
+    <div class="legend" data-page-node-id="gSH2ENOlnpCx4qdfsYGp0h">
+        💡 <strong data-page-node-id="Cf49VIUvgnrmS8RZJQ5KrB">模型说明</strong>：原子核位于中心（红色，带正电），电子（青色，带负电）绕核运动。<br data-page-node-id="K0nlXDxKBGg2WFyLyesm6r">
+        第一层（K层）最多容纳2个电子，第二层（L层）最多容纳8个电子。
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+
+        // 元素数据（初中化学前8号元素）
+        const elements = {
+            'H': {name: '氢', protons: 1, electrons: [1], symbol: 'H'},
+            'He': {name: '氦', protons: 2, electrons: [2], symbol: 'He'},
+            'Li': {name: '锂', protons: 3, electrons: [2, 1], symbol: 'Li'},
+            'Be': {name: '铍', protons: 4, electrons: [2, 2], symbol: 'Be'},
+            'B': {name: '硼', protons: 5, electrons: [2, 3], symbol: 'B'},
+            'C': {name: '碳', protons: 6, electrons: [2, 4], symbol: 'C'},
+            'N': {name: '氮', protons: 7, electrons: [2, 5], symbol: 'N'},
+            'O': {name: '氧', protons: 8, electrons: [2, 6], symbol: 'O'}
+        };
+
+        let currentElement = 'Li';
+        let electronAngles = [];
+        let time = 0;
+
+        // 初始化电子角度
+        function initElectrons() {
+            electronAngles = [];
+            const element = elements[currentElement];
+            element.electrons.forEach((count, shellIndex) => {
+                for (let i = 0; i < count; i++) {
+                    electronAngles.push({
+                        shell: shellIndex,
+                        angle: (Math.PI * 2 / count) * i,
+                        speed: 0.015 - shellIndex * 0.003 // 外层电子运动稍慢
+                    });
+                }
+            });
+        }
+
+        // 绘制原子
+        function drawAtom() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const element = elements[currentElement];
+
+            // 绘制背景星光
+            for (let i = 0; i < 50; i++) {
+                const x = Math.random() * canvas.width;
+                const y = Math.random() * canvas.height;
+                const size = Math.random() * 1;
+                ctx.fillStyle = `rgba(255, 255, 255, ${Math.random() * 0.3})`;
+                ctx.beginPath();
+                ctx.arc(x, y, size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // 绘制原子核外层光晕
+            const nucleusGradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, 40);
+            nucleusGradient.addColorStop(0, 'rgba(255, 107, 107, 0.4)');
+            nucleusGradient.addColorStop(1, 'rgba(255, 107, 107, 0)');
+            ctx.fillStyle = nucleusGradient;
+            ctx.fillRect(centerX - 40, centerY - 40, 80, 80);
+
+            // 绘制原子核
+            ctx.fillStyle = '#FF6B6B';
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, 18, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 原子核边框
+            ctx.strokeStyle = '#FF5252';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+
+            // 绘制质子数
+            ctx.fillStyle = '#FFF';
+            ctx.font = 'bold 14px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(`+${element.protons}`, centerX, centerY);
+
+            // 绘制电子层轨道
+            element.electrons.forEach((count, shellIndex) => {
+                const radius = 60 + shellIndex * 50;
+
+                // 绘制轨道（虚线）
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([5, 5]);
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                // 标注电子层名称
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+                ctx.font = '12px Arial';
+                ctx.textAlign = 'left';
+                const shellName = ['K层', 'L层', 'M层'][shellIndex];
+                ctx.fillText(shellName, centerX + radius + 10, centerY - 5);
+            });
+
+            // 绘制电子
+            electronAngles.forEach(e => {
+                e.angle += e.speed; // 电子运动
+
+                const radius = 60 + e.shell * 50;
+                const x = centerX + Math.cos(e.angle) * radius;
+                const y = centerY + Math.sin(e.angle) * radius;
+
+                // 电子光晕
+                const electronGradient = ctx.createRadialGradient(x, y, 0, x, y, 12);
+                electronGradient.addColorStop(0, 'rgba(78, 205, 196, 0.6)');
+                electronGradient.addColorStop(1, 'rgba(78, 205, 196, 0)');
+                ctx.fillStyle = electronGradient;
+                ctx.fillRect(x - 12, y - 12, 24, 24);
+
+                // 电子本体
+                ctx.fillStyle = '#4ECDC4';
+                ctx.beginPath();
+                ctx.arc(x, y, 6, 0, Math.PI * 2);
+                ctx.fill();
+
+                // 电子边框
+                ctx.strokeStyle = '#45B7AA';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // 绘制电子电荷
+                ctx.fillStyle = '#000';
+                ctx.font = 'bold 10px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('-', x, y);
+            });
+
+            // 绘制元素符号
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.font = 'bold 48px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(element.symbol, centerX, canvas.height - 40);
+        }
+
+        // 切换元素
+        function changeElement() {
+            currentElement = document.getElementById('element').value;
+            initElectrons();
+
+            const element = elements[currentElement];
+            const electronConfig = element.electrons.join(', ');
+            const totalElectrons = element.electrons.reduce((a, b) => a + b, 0);
+
+            document.getElementById('info').innerHTML = `
+                <strong>${element.name} (${element.symbol})</strong><br>
+                原子序数: ${element.protons}<br>
+                电子排布: <span class="electron-config">${electronConfig}</span><br>
+                原子核: ${element.protons}个质子（带${element.protons}个单位正电荷）<br>
+                核外电子: ${totalElectrons}个电子（带${totalElectrons}个单位负电荷）
+            `;
+        }
+
+        // 动画循环
+        function animate() {
+            drawAtom();
+            time++;
+            requestAnimationFrame(animate);
+        }
+
+        initElectrons();
+        changeElement(); // 初始化信息面板
+        animate();
+    </script>
+</body>
+</html>
