@@ -73,7 +73,12 @@
 无需安装、无需构建，**双击 HTML 文件即可用浏览器打开**。
 
 ```bash
+# GitHub（主仓库）
 git clone https://github.com/MashiroMing/alpha_scattering.git
+
+# Gitee（国内镜像，速度快）
+git clone https://gitee.com/muzhiyuan-baihai/alpha_scattering.git
+
 cd alpha_scattering
 
 # Windows
@@ -98,10 +103,13 @@ alpha_scattering/
 ├── atomic_model.html       # 核式原子结构模型（Z=1~36 + 金，1000×750 Canvas）
 ├── 教学设计.md              # 45 分钟课堂教学设计简案
 ├── README.md
-└── .gitignore              # 排除 .workbuddy/ 等本地协作数据
+├── .gitignore              # 排除 .workbuddy/ 等本地协作数据
+└── .gitattributes          # 统一文本文件为 LF 换行
 ```
 
-> 仓库地址：<https://github.com/MashiroMing/alpha_scattering>
+> **双仓库镜像**（内容完全一致，任选其一）：
+> - GitHub：<https://github.com/MashiroMing/alpha_scattering>
+> - Gitee：<https://gitee.com/muzhiyuan-baihai/alpha_scattering> ← 国内访问推荐
 
 ---
 
@@ -167,6 +175,7 @@ alpha_scattering/
 
 | 版本 | 主要变化 |
 |---|---|
+| **v5.2** | **双仓库镜像**：GitHub 与 Gitee 同步发布，内容完全一致；补 `.gitattributes` 统一 LF 换行 |
 | **v5.1** | **金箔层**：新增「🔍 撤掉金箔 / 🟡 铺回金箔」按钮 —— 打开页面先看到一片金箔（核全隐藏），撤箔后揭示金核，形成"先现象、后本质"的教学动线；**默认核数 1 → 5**，开场即一列金核 + 5 条正对反弹束，对比更强烈 |
 | **v5.0** | **核式模型页大改**：元素扩到 **37 项**（Z = 1~36 + 金），下拉按周期分组；**所有元素的核都逐颗绘制核子**（质子红 / 中子灰，六方紧密堆积，核半径下限 14px 自适应放大）；新增**悬浮原子核查看质子/中子数量**；信息面板补"中子/核外电子/质量数"；支持 `?element=` URL 参数 |
 | **v4.9** | **两页联动**：α 散射页点击金原子核 → 新标签页打开 `atomic_model.html?element=Au`（命中半径 26px，悬停变手型；实验说明区同步加入口提示） |
