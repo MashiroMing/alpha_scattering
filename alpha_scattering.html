@@ -134,6 +134,14 @@
         button:active {
             transform: translateY(0);
         }
+        /* 金箔按钮：用金色另标一色，和"发射/重置"区分开（它是课堂动线的主控键） */
+        #foilBtn {
+            background: linear-gradient(135deg, #f0b429 0%, #d9822b 100%);
+            box-shadow: 0 4px 10px rgba(217, 130, 43, 0.35);
+        }
+        #foilBtn:hover {
+            box-shadow: 0 6px 15px rgba(217, 130, 43, 0.5);
+        }
         .stats {
             display: flex;
             gap: 40px;
@@ -257,7 +265,7 @@
             <label data-page-node-id="BxsWB3sskbRkRkHFeolMNc">金原子核数（竖直排列）</label>
             <div class="beam-options" data-page-node-id="SJljnqQRwnrKAT04PEXnWu">
                 <label class="beam-option" data-page-node-id="3DbZycsMU6psUD1h9bbqum">
-                    <input type="radio" name="nucleusCount" value="1" checked data-page-node-id="fz5ZLkekbyABLC8nPR2emv">
+                    <input type="radio" name="nucleusCount" value="1" data-page-node-id="fz5ZLkekbyABLC8nPR2emv">
                     <span data-page-node-id="ucteWb46WFKynvyMBFYKUO">1 个</span>
                 </label>
                 <label class="beam-option" data-page-node-id="6I2MZ1kumbnKySOtGXEww3">
@@ -265,7 +273,7 @@
                     <span data-page-node-id="sO7or4OvcJdwH62tVBtEqS">3 个</span>
                 </label>
                 <label class="beam-option" data-page-node-id="OYqpj7iito4ezcwm5Pf7FX">
-                    <input type="radio" name="nucleusCount" value="5" data-page-node-id="yIWWRrNvFGbRBfAafxEX88">
+                    <input type="radio" name="nucleusCount" value="5" checked data-page-node-id="yIWWRrNvFGbRBfAafxEX88">
                     <span data-page-node-id="btNG35znW4KslZ8CCGnxHW">5 个</span>
                 </label>
             </div>
@@ -279,6 +287,7 @@
             <input type="range" id="incidenceAngle" min="-60" max="60" step="1" value="0" data-page-node-id="AngSld3pQVf7nYbCmX2ha">
         </div>
         <button onclick="fireAlpha()" data-page-node-id="Rwz5UbnnmybOKZjbNgmhHc">🚀 发射α粒子束</button>
+        <button id="foilBtn" onclick="toggleFoil()" data-page-node-id="FoilToggle01BtnXyZ">🔍 撤掉金箔</button>
         <button onclick="reset()" data-page-node-id="IBYH94ZDjqobnGJEYmy5Kt">🔄 重置</button>
     </div>
 
@@ -300,6 +309,7 @@
     <div class="legend" data-page-node-id="XJ2jSrvEHZE1qOHAEevc4M">
         <div class="legend-title">💡 <strong data-page-node-id="05sGl7voGM1HLtghys8yl1">实验说明</strong></div>
         <ul>
+            <li><strong data-page-node-id="clickHint">👆 点击金色的原子核</strong>，看看金原子的内部结构——会打开「核式原子结构模型」，里面能看到核内的 <strong>79 个质子</strong> 和 <strong>118 个中子</strong>，以及核外 79 个电子的分层排布。<span style="color:#8a8f96;">（鼠标移到金核上会变成手指形状，点一下即可；新标签页打开，本页实验结果不会丢）</span></li>
             <li><strong>金箔怎么摆：</strong>α 粒子束从左侧射向金箔，<strong>入射角可在 −60°~+60° 调节</strong>（整个束场统一倾斜）；可切换 1 / 3 / 5 个金原子核，竖直排列模拟金箔切面。</li>
             <li><span style="color:#a8b0b8;" data-page-node-id="electronShellDesc">浅色虚线圆</span>表示金原子的<strong>最外层电子轨道</strong>（玻尔模型）——仅作视觉展示，不影响物理计算；α 粒子实际只与金核（+79e）的库仑斥力作用。</li>
             <li><span style="color:#e8890c; font-weight:bold;" data-page-node-id="3LZKhuQnokn1tyAwPcDFVP">橙色束正对某个金原子核</span>，<strong>只有正对核的束才会被反弹</strong>（入射角改变时，橙色瞄准线随之倾斜）。</li>
@@ -330,6 +340,10 @@
         const SUB = 8;
 
         // 金原子核数组（支持 1/3/5 个，竖直一列模拟金箔切面）
+        // 默认核数：单一真值来源。
+        // 改这个值时必须同步改 HTML 里对应 radio 的 checked 属性 —— 探针 defaultRadioNotFive
+        // 会守住两处一致，写错立刻断言失败；启动时也按它校正 radio，避免静态属性写错导致画面与按钮不符。
+        const DEFAULT_NUCLEUS_COUNT = 5;
         let nuclei = [];
 
         function setupNuclei(count) {
@@ -373,6 +387,15 @@
         //   对应教材"调整 α 粒子射入的角度"。取值范围 -60°~+60°（见滑块）。
         let incidenceAngle = 0;
 
+        // === 金箔层（教学动线：先看现象 → 再揭示本质）===
+        // 页面默认【铺着金箔】：画面上只有一层竖直的金色薄层，金原子核、电子轨道、瞄准虚线
+        // 全部隐藏。学生看到"大多数直线穿过、少数偏转、极少数反弹"后，老师点「撤掉金箔」
+        // 把金箔淡出，露出里面的金原子核 —— 现象与本质对照，逼出"偏转来自核"的结论。
+        // ⚠️ 物理计算在两个模式下完全一致：金箔只遮挡视觉，不改任何粒子行为。
+        let foilVisible = true;        // 目标状态（按钮控制）
+        let foilAlpha = 1;             // 当前不透明度，逐帧逼近目标 → 淡出 / 淡入
+        const FOIL_FADE = 0.07;        // 每帧逼近系数（≈0.6s 完成过渡，课堂节奏不显突兀）
+
         // 统计
         let stats = {
             straight: 0,
@@ -381,7 +404,11 @@
         };
 
         // 绘制所有金原子核
-        function drawNuclei() {
+        // alpha：整层不透明度（金箔挡着时为 0 → 完全不画，连淡淡的影子都不留）
+        function drawNuclei(alpha) {
+            if (alpha <= 0.001) return;
+            ctx.save();
+            ctx.globalAlpha = alpha;
             nuclei.forEach(nuc => {
                 // 外层光晕
                 const gradient = ctx.createRadialGradient(nuc.x, nuc.y, 0, nuc.x, nuc.y, nucleusRadius * 3);
@@ -418,10 +445,15 @@
                 ctx.textAlign = 'center';
                 ctx.fillText('+79e', nuc.x, nuc.y + 4);
             });
+            ctx.restore();
         }
 
         // 绘制每个核的正对入射路径提示线（沿当前入射角 θ 穿过核心）
-        function drawAimLines() {
+        // alpha：同 drawNuclei —— 金箔挡着时不画，否则虚线会直接暴露核的位置
+        function drawAimLines(alpha) {
+            if (alpha <= 0.001) return;
+            ctx.save();
+            ctx.globalAlpha = alpha;
             const thetaRad = incidenceAngle * Math.PI / 180;
             // 一条足够长的线段：以核为起点，沿 ±入射方向各延伸 2 倍画布宽
             const R = canvas.width * 2;
@@ -437,6 +469,66 @@
                 ctx.stroke();
             });
             ctx.setLineDash([]);
+            ctx.restore();
+        }
+
+        // 绘制金箔：竖直金色薄层，正好铺在核所在的那一列上
+        // 【几何口径】宽度 = 2 × electronShellRadius —— 与 drawNuclei 里
+        //   "相邻金原子的电子轨道相切、拼成密实金箔"是同一个宽度。所以撤掉金箔时，
+        //   金色薄层的左右边界正好落在原子簇的外轮廓上，是一种"箔宽 = 原子铺开的范围"的呼应。
+        // 高度铺满画布：这是从侧面看一片薄箔的截面。
+        function drawFoil(alpha) {
+            if (alpha <= 0.001) return;
+            const cx = canvas.width / 2;
+            const half = electronShellRadius;
+            const left = cx - half;
+            const right = cx + half;
+
+            ctx.save();
+            ctx.globalAlpha = alpha;
+
+            // 1. 箔体：横向金属渐变（两侧薄、中间厚），半透明 —— 粒子轨迹压在它上面
+            //    仍然清晰可见，"穿过"的动感不会被糊掉
+            const grad = ctx.createLinearGradient(left, 0, right, 0);
+            grad.addColorStop(0.00, 'rgba(255, 215, 0, 0.06)');
+            grad.addColorStop(0.18, 'rgba(255, 223, 80, 0.20)');
+            grad.addColorStop(0.50, 'rgba(255, 236, 150, 0.30)');
+            grad.addColorStop(0.82, 'rgba(255, 223, 80, 0.20)');
+            grad.addColorStop(1.00, 'rgba(255, 215, 0, 0.06)');
+            ctx.fillStyle = grad;
+            ctx.fillRect(left, 0, half * 2, canvas.height);
+
+            // 2. 轧制纹理：几条细竖线，做出金属箔的质感（纯装饰）
+            ctx.strokeStyle = 'rgba(255, 245, 200, 0.10)';
+            ctx.lineWidth = 1;
+            for (let i = -4; i <= 4; i++) {
+                const x = cx + (half / 5) * i;
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+
+            // 3. 两条边缘高光：强调"这是一片有边界的箔"，而不是一片模糊的黄色
+            ctx.strokeStyle = 'rgba(255, 215, 0, 0.75)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(left, 0);
+            ctx.lineTo(left, canvas.height);
+            ctx.moveTo(right, 0);
+            ctx.lineTo(right, canvas.height);
+            ctx.stroke();
+
+            // 4. 竖排水印「金箔」：让学生知道这层金黄色是什么
+            ctx.fillStyle = 'rgba(255, 240, 180, 0.55)';
+            ctx.font = 'bold 34px "Microsoft YaHei", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.translate(cx, canvas.height / 2);
+            ctx.rotate(-Math.PI / 2);          // 竖排（自下而上阅读）
+            ctx.fillText('金  箔', 0, 4);
+
+            ctx.restore();
         }
 
         // α粒子类
@@ -742,11 +834,25 @@
             });
         }
 
+        // 切换金箔：撤掉 ↔ 铺回（可反复演示对照）
+        function toggleFoil() {
+            foilVisible = !foilVisible;
+            updateFoilBtn();
+        }
+
+        // 按钮文案随状态切换（不写"看看里面有什么"之类的提示语，避免提前剧透）
+        function updateFoilBtn() {
+            document.getElementById('foilBtn').textContent = foilVisible ? '🔍 撤掉金箔' : '🟡 铺回金箔';
+        }
+
         // 重置
         function reset() {
             particles = [];
             stats = {straight: 0, deflected: 0, bounced: 0};
             updateStats();
+            // 重置 = 回到"铺着金箔"的初始状态（foilAlpha 逐帧淡入，不是硬切）
+            foilVisible = true;
+            updateFoilBtn();
         }
 
         // 更新统计
@@ -774,8 +880,60 @@
             });
         });
 
-        // 初始化：默认 1 个金核
-        setupNuclei(1);
+        // === 点击金原子核 → 新标签页打开金原子的微观结构 ===
+        // 教学动线：核上写着 +79e，学生想知道"79 从哪来" → 点它 → 看到 79 个质子 + 79 个电子
+        // 命中半径 26px（核本体只有 12px，按本体判定课堂上很难点中）
+        const NUCLEUS_HIT_R = 26;
+        const ATOM_MODEL_URL = 'atomic_model.html?element=Au';
+
+        // 把鼠标事件坐标换算成画布内部坐标。
+        // 【为什么不能直接用 offsetX？】画布 CSS 显示尺寸可能被浏览器缩放
+        // （窗口窄时、或 Ctrl+− 缩放），此时 1 个 CSS 像素 ≠ 1 个画布像素，
+        // 直接用 offsetX 会出现"看着点在核上却跳到空白处"的偏移。
+        function toCanvasPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            return {
+                x: (e.clientX - rect.left) * canvas.width / rect.width,
+                y: (e.clientY - rect.top) * canvas.height / rect.height
+            };
+        }
+
+        // 返回鼠标下方的金原子核（不在任何核上则返回 null）
+        // 金箔挡着时核是"看不见"的 → 一律不可点，否则学生能点中一个隐形的东西
+        // （门禁用 foilVisible 这一"目标状态"而非动画中的 foilAlpha：语义更直白，
+        //   也不用等 0.6s 淡出动画跑完才解锁）
+        function nucleusAt(pos) {
+            if (foilVisible) return null;
+            return nuclei.find(n =>
+                Math.hypot(n.x - pos.x, n.y - pos.y) <= NUCLEUS_HIT_R
+            ) || null;
+        }
+
+        // 悬停在核上时变手型，提示"这里可以点"
+        canvas.addEventListener('mousemove', e => {
+            canvas.style.cursor = nucleusAt(toCanvasPos(e)) ? 'pointer' : 'default';
+        });
+        canvas.addEventListener('mouseleave', () => {
+            canvas.style.cursor = 'default';
+        });
+
+        // 点击金核 → 打开金原子结构模型
+        // 多个核（1/3/5）时点任意一个都跳到同一个页面 —— 它们都是金原子
+        canvas.addEventListener('click', e => {
+            if (!nucleusAt(toCanvasPos(e))) return;
+            // 由用户点击直接触发 → 属于用户手势，不会被浏览器的弹窗拦截
+            window.open(ATOM_MODEL_URL, '_blank');
+        });
+
+        // 初始化：默认铺着金箔 + DEFAULT_NUCLEUS_COUNT 个金核，并同步金箔按钮文案
+        // 教学动线：先看到一片金箔 → 发射看到少数偏转/反弹 → 撤箔揭示金原子核
+        // 5 核的电子轨道相切拼成一堵"密不透风的墙"，却仍能被 α 粒子穿过 → 逼出"原子内部几乎全是空的"
+        // （选 5 核而非 1 核开场：一列核 + 5 条正对束同时反弹，"原子内部很空"的对比更强烈）
+        document.querySelectorAll('input[name="nucleusCount"]').forEach(radio => {
+            radio.checked = (parseInt(radio.value) === DEFAULT_NUCLEUS_COUNT);
+        });
+        setupNuclei(DEFAULT_NUCLEUS_COUNT);
+        updateFoilBtn();
 
         // 动画循环
         function animate() {
@@ -797,11 +955,22 @@
                 ctx.stroke();
             }
 
+            // 金箔 / 金核 的交叉淡入淡出：逐帧把 foilAlpha 逼近目标值
+            const foilTarget = foilVisible ? 1 : 0;
+            if (foilAlpha !== foilTarget) {
+                foilAlpha += (foilTarget - foilAlpha) * FOIL_FADE;
+                if (Math.abs(foilTarget - foilAlpha) < 0.01) foilAlpha = foilTarget;
+            }
+            const nucleiAlpha = 1 - foilAlpha;   // 两者互补：箔在核不见，箔走核现身
+
             // 绘制正对入射路径提示线（每个核一条）
-            drawAimLines();
+            drawAimLines(nucleiAlpha);
+
+            // 金箔层画在核之前（箔是"背景中的一层物质"，核现身时压在它前面）
+            drawFoil(foilAlpha);
 
             // 绘制所有金原子核
-            drawNuclei();
+            drawNuclei(nucleiAlpha);
 
             // 更新和绘制α粒子
             particles.forEach(p => {
