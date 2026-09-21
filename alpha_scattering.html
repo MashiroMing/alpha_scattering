@@ -169,6 +169,15 @@
             color: white;
             box-shadow: 0 3px 8px rgba(102, 126, 234, 0.4);
         }
+        /* 「原子模型」选择独占一行：它与「金原子核数」是两个维度 ——
+           前者是原子内部的解释方式（核式 / 布丁），后者是原子个数，不能挤在同一格。 */
+        .control-group.full {
+            grid-column: 1 / -1;
+        }
+        /* 布丁模型按钮用金色区分（与撤箔按钮同色系，都属于"揭示内部结构"的开关） */
+        .beam-option.pudding input[type="radio"]:checked + span {
+            background: linear-gradient(135deg, #f0b429 0%, #d9822b 100%);
+        }
         button {
             padding: 10px 14px;
             font-size: 15px;
@@ -383,6 +392,30 @@
             55%  { transform: scale(1.05); }
             100% { transform: scale(1); }
         }
+        /* ── 返回探索史（固定定位：不占布局高度，一屏放得下的余量不被吃掉）── */
+        .home-link {
+            position: fixed;
+            left: 20px;
+            top: 16px;
+            padding: 7px 16px;
+            background: rgba(255,255,255,0.82);
+            color: #555;
+            font-size: 13px;
+            border-radius: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.12);
+            text-decoration: none;
+            font-family: "Microsoft YaHei", sans-serif;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            letter-spacing: 0.3px;
+            z-index: 1000;
+            transition: background 0.3s, color 0.3s, transform 0.3s;
+        }
+        .home-link:hover {
+            background: rgba(255,255,255,0.96);
+            color: #333;
+            transform: translateY(-1px);
+        }
         /* ── 窄屏回退：放不下两栏时改为上下堆叠（说明区限高内滚） ───────── */
         @media (max-width: 1080px) {
             :root {
@@ -404,6 +437,7 @@
     </style>
 </head>
 <body data-page-node-id="4rJF4zTpfbfmeLFsGlYINC">
+    <a class="home-link" href="index.html" data-page-node-id="HomeLinkAlpha001">← 原子探索史</a>
     <h1 data-page-node-id="ta57cO2c88AupOq3huudvX">🔬 α粒子轰击金箔实验模拟</h1>
     <div class="subtitle" data-page-node-id="TaqYSgX79BMPDbtfQPBTpG">卢瑟福散射实验 · 探索原子内部结构</div>
 
@@ -442,6 +476,19 @@
                     <label data-page-node-id="AngLbl5rNc2sVhAkWqpzY">入射角: <span id="angleValue" style="color: #667eea;" data-page-node-id="AngVal9uHd3mXqRwZk8Ts">0</span>°</label>
                     <input type="range" id="incidenceAngle" min="-60" max="60" step="1" value="0" data-page-node-id="AngSld3pQVf7nYbCmX2ha">
                 </div>
+                <div class="control-group full">
+                    <label>原子模型（撤掉金箔后可见内部结构）</label>
+                    <div class="beam-options">
+                        <label class="beam-option">
+                            <input type="radio" name="atomModel" value="nuclear" checked>
+                            <span>核式模型</span>
+                        </label>
+                        <label class="beam-option pudding">
+                            <input type="radio" name="atomModel" value="pudding">
+                            <span>布丁模型</span>
+                        </label>
+                    </div>
+                </div>
                 <div class="actions">
                     <button class="primary" onclick="fireAlpha()" data-page-node-id="Rwz5UbnnmybOKZjbNgmhHc">🚀 发射α粒子束</button>
                     <button id="foilBtn" onclick="toggleFoil()" data-page-node-id="FoilToggle01BtnXyZ">🔍 撤掉金箔</button>
@@ -476,6 +523,7 @@
                         <li><strong>推荐试试：</strong><strong data-page-node-id="AmY8tTFCJwIlE7drmjcW0K">50-300 任意束数 + 5 核</strong>→ 绝大多数直线穿过、少数偏转、极少数反弹，这正是卢瑟福观察到的现象。</li>
                         <li><strong>能量管什么？</strong>能量<strong>越低</strong>（1-2 MeV），粒子越慢、在核附近停留越久，被库仑力推开得越明显——几乎整片束都被推偏；能量<strong>越高</strong>，粒子飞快掠过核旁，只有离核很近的少数几束才会发生较大偏转，其余基本笔直穿过。（无论能量调到几档，"少数偏转 + 极少数反弹"始终存在。）</li>
                         <li><strong>入射角能说明什么？</strong>无论把入射角调到多少度，<strong>正对核的那束总会被弹回</strong>——说明"原子核带正电、体积极小"这个结论与入射方向无关。（角度较大时，正对束的起点会移出画布、从上/下边缘飞入，但它仍然正对目标核。）</li>
+                        <li><strong>🟡 用「布丁模型」做反证：</strong>把「原子模型」切到<strong>布丁模型</strong>再发一次——那是汤姆逊发现电子后提出的模型：正电荷像"布丁"一样<strong>均匀铺满整个原子</strong>，电子像"葡萄干"嵌在里面。<strong>同样的束数、能量、入射角，结果却完全不同：一束都不会被反弹。</strong>可实验明明观察到"极少数 α 粒子被弹了回来"——<strong>矛盾 → 布丁模型错了</strong>。卢瑟福正是据此把它推翻，换成"正电荷集中在极小体积的核上"的核式模型。<span style="color:#8a8f96;">（切换模型只改"正电荷怎么分布"这一件事，其余参数全部不动，是严格的对照实验）</span></li>
                     </ul>
                 </div>
             </details>
@@ -564,6 +612,21 @@
         //   对应教材"调整 α 粒子射入的角度"。取值范围 -60°~+60°（见滑块）。
         let incidenceAngle = 0;
 
+        // === 原子模型（教学对照：卢瑟福核式 ↔ 汤姆逊布丁）===
+        // 【为什么做这个对照？】教材写"卢瑟福由此推翻了葡萄干蛋糕模型"，但学生看不到
+        //   "布丁模型到底错在哪"。切到这个模式，物理【只改一处】—— 正电荷的分布方式，
+        //   能量 / 入射角 / 束数 / 偏转判据全部不变，构成严格的对照实验。
+        // 【布丁模型的物理】+79e 均匀分布在半径 electronShellRadius 的球内
+        //   （整团正电物质就是"原子"，电子嵌在其中，像葡萄干嵌在布丁里）：
+        //     球外 d ≥ R：整团电荷等效集中于球心 → F ∝ 1/d²
+        //     球内 d < R：只有半径 d 以内的电荷起作用 → F ∝ d/R³（线性，球心处为 0）
+        //   峰值力出现在球面 d=R 处，仅 kq₁q₂/R²。5 核时 R=75px，而核式模型的
+        //   最近作用距离 R_MIN=16px —— 布丁模型的峰值力只有核式的 (16/75)² ≈ 4.5%，
+        //   α 粒子只会被轻轻推一下，【永远不可能被反弹】。
+        //   这正是布丁模型的致命伤：解释不了"极少数 α 粒子被反弹回来"。
+        let atomModel = 'nuclear';
+        const PUDDING_Q = 79;   // 布丁模型里整团正电荷的电量（与核式模型同一个 +79e）
+
         // === 金箔层（教学动线：先看现象 → 再揭示本质）===
         // 页面默认【铺着金箔】：画面上只有一层竖直的金色薄层，金原子核、电子轨道、瞄准虚线
         // 全部隐藏。学生看到"大多数直线穿过、少数偏转、极少数反弹"后，老师点「撤掉金箔」
@@ -621,6 +684,71 @@
                 ctx.font = 'bold 12px Arial';
                 ctx.textAlign = 'center';
                 ctx.fillText('+79e', nuc.x, nuc.y + 4);
+            });
+            ctx.restore();
+        }
+
+        // 绘制「葡萄干布丁」模型：一整团均匀分布的正电荷 + 嵌在其中的电子
+        // 【图形口径】正电球半径 = electronShellRadius —— 与核式模型的"最外层电子轨道半径"
+        //   取同一个值，因为布丁模型说的就是"整个原子"是一团正电物质。同尺度才能做对照：
+        //   同一个画面位置，核式模型画的是"很小的核 + 空旷的电子轨道"，布丁画的是"实心一大团"。
+        // 【电子位置】用黄金角螺旋确定性铺开（半径按 √i 分布 → 面密度均匀）。
+        //   不用随机数：每次刷新画面完全一致，课堂回放与截图都可复现。
+        function drawPudding(alpha) {
+            if (alpha <= 0.001) return;
+            const GOLDEN = Math.PI * (3 - Math.sqrt(5));   // 黄金角 ≈ 2.39996 rad
+            const N_ELECTRON = 79;
+            ctx.save();
+            ctx.globalAlpha = alpha;
+
+            nuclei.forEach(nuc => {
+                const R = electronShellRadius;
+
+                // 1. 正电球主体：径向渐变（中心略亮）→ 读作"一团有厚度的物质"，而非空心圈
+                const grad = ctx.createRadialGradient(nuc.x, nuc.y, 0, nuc.x, nuc.y, R);
+                grad.addColorStop(0.00, 'rgba(255, 214, 120, 0.28)');
+                grad.addColorStop(0.65, 'rgba(255, 205, 90, 0.17)');
+                grad.addColorStop(1.00, 'rgba(255, 200, 70, 0.06)');
+                ctx.fillStyle = grad;
+                ctx.beginPath();
+                ctx.arc(nuc.x, nuc.y, R, 0, Math.PI * 2);
+                ctx.fill();
+
+                // 2. 球面轮廓：实线（刻意区别于核式模型那圈"电子轨道"虚线）
+                ctx.strokeStyle = 'rgba(255, 205, 90, 0.75)';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+
+                // 3. 79 个电子嵌在球内（青色，对应核式模型里电子的颜色）
+                ctx.fillStyle = 'rgba(120, 230, 255, 0.92)';
+                ctx.strokeStyle = 'rgba(20, 90, 120, 0.55)';
+                ctx.lineWidth = 1;
+                for (let i = 0; i < N_ELECTRON; i++) {
+                    const r = R * Math.sqrt((i + 0.5) / N_ELECTRON);
+                    const a = i * GOLDEN;
+                    ctx.beginPath();
+                    ctx.arc(nuc.x + r * Math.cos(a), nuc.y + r * Math.sin(a), 3, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                }
+
+                // 4. 要害标注：只标【中间那一个】球，且放在球外侧右侧。
+                //    5 个球重复标同一条文字会糊成一片；球内全是电子点，写字又会被压住。
+                //    必须加一层深色底板 —— α 轨迹横穿这个位置，不加底板的文字会被切成碎片。
+                if (nuc === nuclei[Math.floor(nuclei.length / 2)]) {
+                    const label = '+79e 均匀分布';
+                    ctx.font = 'bold 14px "Microsoft YaHei", sans-serif';
+                    ctx.textAlign = 'left';
+                    ctx.textBaseline = 'middle';
+                    const lx = nuc.x + R + 22;
+                    const tw = ctx.measureText(label).width;
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+                    ctx.beginPath();
+                    ctx.roundRect(lx - 8, nuc.y - 13, tw + 16, 26, 7);
+                    ctx.fill();
+                    ctx.fillStyle = 'rgba(255, 226, 150, 0.95)';
+                    ctx.fillText(label, lx, nuc.y);
+                }
             });
             ctx.restore();
         }
@@ -771,16 +899,28 @@
                 const dt = 1 / SUB;
 
                 for (let s = 0; s < SUB; s++) {
-                    // 1a. 库仑斥力叠加（距离钳制在 R_MIN 以上，避免 1/r² 奇点）
+                    // 1a. 正电荷斥力叠加 + 子步长积分
+                    //     核式模型 = 逐核 1/r²（距离钳制在 R_MIN 以上）；布丁模型 = 整团均匀分布。
+                    //     两种模型共用同一个 k / q₁ / eForce，唯一的差别就是"正电荷怎么分布"。
                     nuclei.forEach(nuc => {
                         const dx = nuc.x - this.x;
                         const dy = nuc.y - this.y;
                         const distance = Math.sqrt(dx * dx + dy * dy);
                         if (distance > 1e-6) {
-                            const dEff = Math.max(distance, R_MIN);
-                            // 距离越近力越大；能量越大偏转越小（能量系数在 FORCE_E_CAP 处截断）
-                            const force = k * q1 * q2 / (dEff * dEff * this.eForce);
-                            // 斥力方向：原子核 → 粒子（取负，与 dx,dy 反向）
+                            let force;
+                            if (atomModel === 'nuclear') {
+                                const dEff = Math.max(distance, R_MIN);
+                                // 距离越近力越大；能量越大偏转越小（能量系数在 FORCE_E_CAP 处截断）
+                                force = k * q1 * q2 / (dEff * dEff * this.eForce);
+                            } else {
+                                // 布丁模型：均匀带电球。球内线性（球心处为 0）、球外 1/r²，
+                                // 两式在 d=R 处连续且取到峰值力 —— 不需要 R_MIN 钳制，也不会发散。
+                                const R = electronShellRadius;
+                                force = distance < R
+                                    ? k * q1 * PUDDING_Q * distance / (R * R * R * this.eForce)
+                                    : k * q1 * PUDDING_Q / (distance * distance * this.eForce);
+                            }
+                            // 斥力方向：正电荷团 → 粒子（取负，与 dx,dy 反向）
                             this.vx += -(dx / distance) * force * dt;
                             this.vy += -(dy / distance) * force * dt;
                         }
@@ -795,7 +935,10 @@
                     //     而不是只看 vx<0——倾斜时 vx 恒为正，旧判据会失效。
                     //     along<0 表示速度已与入射方向相反（越过转折点）→ 保持反向即可；
                     //     若尚未反向却已到势垒（罕见），做一次整体掉头，之后不再翻转（幂等）。
-                    if (this.isCenter && this.targetNucleus && !this.bounced) {
+                    //     【布丁模型没有反弹】正电荷被摊开在整个原子尺度上，峰值力只有核式的
+                    //     百分之几，α 粒子最多被轻轻推一下。所以这里加 atomModel 门禁 ——
+                    //     它表达的是物理结论（布丁模型解释不了反弹），不是数值特判。
+                    if (atomModel === 'nuclear' && this.isCenter && this.targetNucleus && !this.bounced) {
                         const dToTarget = Math.hypot(
                             this.targetNucleus.x - this.x,
                             this.targetNucleus.y - this.y
@@ -857,8 +1000,9 @@
                      this.y > canvas.height + 20 || this.y < -20)) {
                     // 若仍未计数，在此补计
                     if (!this.result) {
-                        if (this.isCenter) {
+                        if (this.isCenter && atomModel === 'nuclear') {
                             // 正对核的粒子：库仑势垒必然把它推回 → 反弹（保底）
+                            // 布丁模型下没有势垒，这条保底不成立 → 落到下面按偏转角正常判定
                             this.result = 'bounced';
                             stats.bounced++;
                         } else {
@@ -1060,6 +1204,15 @@
             document.getElementById('angleValue').textContent = this.value;
         });
 
+        // 原子模型切换：物理与绘制同时生效。
+        // 刻意【不清空】已发射的粒子、也不重置统计 —— 对照实验要看的是"重新发射后现象变不变"，
+        // 让学生自己在同一张统计面板上对比两种模型的结果。
+        document.querySelectorAll('input[name="atomModel"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                atomModel = this.value;
+            });
+        });
+
         // 核数切换：立即重排金核
         document.querySelectorAll('input[name="nucleusCount"]').forEach(radio => {
             radio.addEventListener('change', function() {
@@ -1089,8 +1242,9 @@
         // 金箔挡着时核是"看不见"的 → 一律不可点，否则学生能点中一个隐形的东西
         // （门禁用 foilVisible 这一"目标状态"而非动画中的 foilAlpha：语义更直白，
         //   也不用等 0.6s 淡出动画跑完才解锁）
+        // 布丁模型下同样不可点：那时画面上【没有核】，点开的却是核式原子结构模型，会误导。
         function nucleusAt(pos) {
-            if (foilVisible) return null;
+            if (foilVisible || atomModel !== 'nuclear') return null;
             return nuclei.find(n =>
                 Math.hypot(n.x - pos.x, n.y - pos.y) <= NUCLEUS_HIT_R
             ) || null;
@@ -1156,8 +1310,12 @@
             // 金箔层画在核之前（箔是"背景中的一层物质"，核现身时压在它前面）
             drawFoil(foilAlpha);
 
-            // 绘制所有金原子核
-            drawNuclei(nucleiAlpha);
+            // 绘制原子内部结构：核式模型画金核 + 电子轨道，布丁模型画一整团正电物质 + 嵌入电子
+            if (atomModel === 'nuclear') {
+                drawNuclei(nucleiAlpha);
+            } else {
+                drawPudding(nucleiAlpha);
+            }
 
             // 更新和绘制α粒子
             particles.forEach(p => {

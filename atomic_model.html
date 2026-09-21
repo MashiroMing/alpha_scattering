@@ -153,9 +153,34 @@
         }
         .nucleus-tip i.p { background: #FF6B6B; }   /* 质子 */
         .nucleus-tip i.n { background: #8E9BAA; }   /* 中子 */
+        /* ── 返回探索史（固定定位：不占布局高度，一屏放得下的余量不被吃掉）── */
+        .home-link {
+            position: fixed;
+            left: 20px;
+            top: 16px;
+            padding: 7px 16px;
+            background: rgba(255,255,255,0.82);
+            color: #555;
+            font-size: 13px;
+            border-radius: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.12);
+            text-decoration: none;
+            font-family: "Microsoft YaHei", sans-serif;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            letter-spacing: 0.3px;
+            z-index: 1000;
+            transition: background 0.3s, color 0.3s, transform 0.3s;
+        }
+        .home-link:hover {
+            background: rgba(255,255,255,0.96);
+            color: #333;
+            transform: translateY(-1px);
+        }
     </style>
 </head>
 <body data-page-node-id="zbBE1Q8IQGQuVgvUEJuHyn">
+    <a class="home-link" href="index.html" data-page-node-id="HomeLinkModel001">← 原子探索史</a>
     <h1 data-page-node-id="zIzVVCsFRv4hPXtF6IGZXA">⚛️ 核式原子结构模型</h1>
     <div class="subtitle" data-page-node-id="1Z5HRPmLBCZTz7WUg55gzE">卢瑟福原子模型 · 电子绕核运动</div>
 

@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>原子结构探索史 · 模拟入口</title>
+    <style>
+        body {
+            font-family: "Microsoft YaHei", sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 14px 20px 20px;
+            min-height: 100vh;
+            margin: 0;
+            box-sizing: border-box;
+        }
+        h1 {
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            margin: 0;
+            font-size: 26px;
+            text-align: center;
+        }
+        .subtitle {
+            color: rgba(255,255,255,0.92);
+            font-size: 13px;
+            margin: 6px 0 14px;
+            text-align: center;
+        }
+        .subtitle b { color: #ffe08a; }
+        /* ── 时间轴：一根竖线 + 每代模型一张卡 ───────────────────────── */
+        .timeline {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            max-width: 1180px;
+        }
+        .tl-item {
+            position: relative;
+            padding-left: 38px;
+            margin-bottom: 18px;
+        }
+        .tl-item:last-child { margin-bottom: 0; }
+        /* 竖线：连到下一条，最后一条不画 */
+        .tl-item::before {
+            content: "";
+            position: absolute;
+            left: 9px;
+            top: 26px;
+            bottom: -18px;
+            width: 2px;
+            background: rgba(255,255,255,0.28);
+        }
+        .tl-item:last-child::before { display: none; }
+        .tl-dot {
+            position: absolute;
+            left: 2px;
+            top: 20px;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.55);
+            border: 3px solid rgba(255,255,255,0.9);
+            box-sizing: border-box;
+        }
+        /* 有模拟可进的那三代：轴点实心高亮，一眼看出"这里能点进去" */
+        .tl-item.live .tl-dot {
+            background: #ffe08a;
+            border-color: #fff;
+            box-shadow: 0 0 0 4px rgba(255, 224, 138, 0.25);
+        }
+        .tl-card {
+            background: rgba(255,255,255,0.96);
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.18);
+            padding: 16px 22px 17px;
+        }
+        .tl-item.live .tl-card {
+            border-left: 5px solid #f0b429;
+            padding-left: 15px;
+        }
+        .tl-top {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+        .tl-year {
+            font-size: 15px;
+            font-weight: bold;
+            color: white;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 14px;
+            padding: 3px 13px;
+            letter-spacing: 0.5px;
+            flex: 0 0 auto;
+        }
+        .tl-person {
+            font-size: 15px;
+            font-weight: bold;
+            color: #333;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .tl-btn {
+            margin-left: auto;
+            flex: 0 0 auto;
+            padding: 7px 20px;
+            font-size: 14px;
+            font-weight: bold;
+            color: white;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 20px;
+            text-decoration: none;
+            box-shadow: 0 3px 9px rgba(102, 126, 234, 0.35);
+            transition: transform 0.25s, box-shadow 0.25s;
+            white-space: nowrap;
+        }
+        .tl-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(102, 126, 234, 0.5);
+        }
+        /* 同一代有两页可进时，按钮并排靠右；第二个用描边样式区分"拓展版" */
+        .tl-btns {
+            margin-left: auto;
+            flex: 0 0 auto;
+            display: flex;
+            gap: 8px;
+        }
+        .tl-btns .tl-btn { margin-left: 0; }
+        .tl-btn.alt {
+            background: #fff;
+            color: #667eea;
+            border: 2px solid #667eea;
+            box-shadow: none;
+        }
+        .tl-btn.alt:hover { box-shadow: 0 6px 15px rgba(102, 126, 234, 0.35); }
+        .tl-tag {
+            margin-left: auto;
+            flex: 0 0 auto;
+            font-size: 12px;
+            color: #8a8f96;
+            border: 1px dashed #c6cbd2;
+            border-radius: 14px;
+            padding: 4px 14px;
+            white-space: nowrap;
+        }
+        /* 证据 / 结论两行：结构对齐，学生一眼看到"证据 → 结论"的推理关系 */
+        .tl-row {
+            display: flex;
+            align-items: baseline;
+            gap: 10px;
+            font-size: 14.5px;
+            color: #444;
+            line-height: 1.55;
+            margin-top: 5px;
+        }
+        .tl-k {
+            flex: 0 0 34px;
+            font-size: 12px;
+            font-weight: bold;
+            text-align: center;
+            border-radius: 4px;
+            padding: 2px 0;
+            color: white;
+        }
+        .tl-k-ev { background: #7a8ba8; }
+        .tl-k-co { background: #764ba2; }
+        .tl-v b { color: #764ba2; }
+        .note {
+            width: 100%;
+            max-width: 1180px;
+            margin-top: 13px;
+            font-size: 12.5px;
+            color: rgba(255,255,255,0.82);
+            line-height: 1.6;
+            text-align: center;
+        }
+        .note b { color: #ffe08a; }
+        /* ── 页面署名（右下角胶囊标签，悬停展开完整署名） ─────────────── */
+        .signature {
+            position: fixed;
+            right: 20px;
+            bottom: 15px;
+            padding: 8px 18px;
+            background: rgba(255, 255, 255, 0.82);
+            color: #555;
+            font-size: 13px;
+            border-radius: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.12);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            user-select: none;
+            z-index: 1000;
+            cursor: pointer;
+            letter-spacing: 0.3px;
+            display: flex;
+            align-items: center;
+            white-space: nowrap;
+            transition: background 0.35s ease, color 0.35s ease,
+                        box-shadow 0.35s ease, transform 0.35s ease;
+        }
+        .signature .author-full {
+            display: inline-block;
+            max-width: 0;
+            opacity: 0;
+            margin-left: 0;
+            overflow: hidden;
+            transition: max-width 0.35s ease, opacity 0.35s ease 0.05s,
+                        margin-left 0.35s ease;
+        }
+        .signature:hover {
+            background: rgba(255, 255, 255, 0.95);
+            color: #333;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.2);
+            transform: translateY(-1px);
+        }
+        .signature:hover .author-full {
+            max-width: 260px;
+            opacity: 1;
+            margin-left: 10px;
+        }
+        /* ── 窄屏回退 ─────────────────────────────────────────────── */
+        @media (max-width: 860px) {
+            .tl-person { font-size: 14px; }
+            .tl-row { font-size: 13px; }
+        }
+        /* ── 矮屏回退（1600×900 / 1366×768 这类投影）───────────────────
+           本页五个阶段必须一屏看全，否则"整条化学史一次呈现"的效果就没了。
+           压缩内边距与字号，把内容高从 838px 压到 ~570px。 */
+        @media (max-height: 860px) {
+            body { padding: 10px 16px 12px; }
+            h1 { font-size: 20px; }
+            .subtitle { font-size: 12px; margin: 4px 0 9px; }
+            .tl-item { padding-left: 32px; margin-bottom: 10px; }
+            .tl-item::before { left: 8px; top: 22px; bottom: -10px; }
+            .tl-dot { left: 2px; top: 17px; width: 14px; height: 14px; border-width: 2px; }
+            .tl-card { padding: 10px 16px 11px; }
+            .tl-top { gap: 8px; margin-bottom: 5px; }
+            .tl-year { font-size: 13px; padding: 2px 10px; }
+            .tl-person { font-size: 14px; }
+            .tl-btn { font-size: 13px; padding: 6px 16px; }
+            .tl-tag { font-size: 11.5px; padding: 3px 11px; }
+            .tl-row { font-size: 13px; margin-top: 3px; line-height: 1.5; }
+            .tl-k { flex-basis: 30px; font-size: 11px; }
+            .note { font-size: 11.5px; margin-top: 9px; line-height: 1.5; }
+        }
+        /* ── 极矮屏（1366×768 / 1280×720）再压一档 ──────────────────── */
+        @media (max-height: 700px) {
+            body { padding: 8px 14px 8px; }
+            h1 { font-size: 17px; }
+            .subtitle { font-size: 11.5px; margin: 3px 0 7px; }
+            .tl-item { padding-left: 26px; margin-bottom: 7px; }
+            .tl-item::before { left: 7px; top: 18px; bottom: -7px; }
+            .tl-dot { left: 2px; top: 14px; width: 12px; height: 12px; border-width: 2px; }
+            .tl-card { padding: 8px 14px 9px; }
+            .tl-top { gap: 7px; margin-bottom: 3px; }
+            .tl-year { font-size: 12px; padding: 1px 9px; }
+            .tl-person { font-size: 13px; }
+            .tl-btn { font-size: 12px; padding: 4px 13px; }
+            .tl-tag { font-size: 11px; padding: 2px 9px; }
+            .tl-row { font-size: 12px; margin-top: 2px; line-height: 1.4; }
+            .tl-k { flex-basis: 28px; font-size: 10.5px; }
+            .note { font-size: 10.5px; margin-top: 6px; line-height: 1.4; }
+        }
+    </style>
+</head>
+<body>
+    <h1>🔬 原子结构探索史</h1>
+    <div class="subtitle">
+        从「原子不可再分」到「电子云」—— <b>每一次模型的更替，都源于一个推翻旧模型的新证据</b>
+    </div>
+
+    <ol class="timeline">
+        <li class="tl-item">
+            <div class="tl-dot"></div>
+            <div class="tl-card">
+                <div class="tl-top">
+                    <span class="tl-year">1803</span>
+                    <span class="tl-person">道尔顿 · John Dalton</span>
+                    <span class="tl-tag">史料 · 无模拟</span>
+                </div>
+                <div class="tl-row"><span class="tl-k tl-k-ev">证据</span><span class="tl-v">各种元素总是按<b>固定的质量比</b>结合，反应前后总质量不变</span></div>
+                <div class="tl-row"><span class="tl-k tl-k-co">结论</span><span class="tl-v">原子是<b>实心小球</b>，不可再分、不能创造也不能毁灭 ——「实心球模型」</span></div>
+            </div>
+        </li>
+
+        <li class="tl-item live">
+            <div class="tl-dot"></div>
+            <div class="tl-card">
+                <div class="tl-top">
+                    <span class="tl-year">1897</span>
+                    <span class="tl-person">汤姆逊 · J.J. Thomson</span>
+                    <span class="tl-btns">
+                        <a class="tl-btn" href="cathode_ray.html">进入模拟 →</a>
+                        <a class="tl-btn alt" href="electron_in_field.html"
+                           title="带电粒子在电场、磁场中的运动：加速、类平抛、圆周运动、正交场测荷质比">高中定量版 →</a>
+                    </span>
+                </div>
+                <div class="tl-row"><span class="tl-k tl-k-ev">证据</span><span class="tl-v">阴极射线在电场中<b>偏向正极板</b></span></div>
+                <div class="tl-row"><span class="tl-k tl-k-co">结论</span><span class="tl-v">射线是<b>带负电的粒子流</b> ——「电子」。原子内部还有更小的粒子，<b>可以再分</b></span></div>
+            </div>
+        </li>
+
+        <li class="tl-item live">
+            <div class="tl-dot"></div>
+            <div class="tl-card">
+                <div class="tl-top">
+                    <span class="tl-year">1911</span>
+                    <span class="tl-person">卢瑟福 · Ernest Rutherford</span>
+                    <a class="tl-btn" href="alpha_scattering.html">进入模拟 →</a>
+                </div>
+                <div class="tl-row"><span class="tl-k tl-k-ev">证据</span><span class="tl-v">α 粒子轰击金箔：绝大多数<b>直线穿过</b>、少数<b>偏转</b>、极少数被<b>弹回</b></span></div>
+                <div class="tl-row"><span class="tl-k tl-k-co">结论</span><span class="tl-v">正电荷集中在<b>体积极小的核</b>上 ——「核式结构模型」。布丁模型被推翻</span></div>
+            </div>
+        </li>
+
+        <li class="tl-item live">
+            <div class="tl-dot"></div>
+            <div class="tl-card">
+                <div class="tl-top">
+                    <span class="tl-year">1913</span>
+                    <span class="tl-person">玻尔 · Niels Bohr</span>
+                    <a class="tl-btn" href="atomic_model.html">进入模拟 →</a>
+                </div>
+                <div class="tl-row"><span class="tl-k tl-k-ev">证据</span><span class="tl-v">原子发光不是连续的一片，而是<b>一条条分立的亮线</b></span></div>
+                <div class="tl-row"><span class="tl-k tl-k-co">结论</span><span class="tl-v">电子只能在固定轨道上<b>分层运动</b> ——「电子层」模型（K 层、L 层、M 层……）</span></div>
+            </div>
+        </li>
+
+        <li class="tl-item">
+            <div class="tl-dot"></div>
+            <div class="tl-card">
+                <div class="tl-top">
+                    <span class="tl-year">1926</span>
+                    <span class="tl-person">现代 · 量子力学</span>
+                    <span class="tl-tag">超出中学范围</span>
+                </div>
+                <div class="tl-row"><span class="tl-k tl-k-ev">证据</span><span class="tl-v">电子束通过晶体也能产生<b>衍射图样</b> —— 电子居然有波动性</span></div>
+                <div class="tl-row"><span class="tl-k tl-k-co">结论</span><span class="tl-v">电子没有确定的位置，只能说它在某处<b>出现的概率大</b> ——「电子云」</span></div>
+            </div>
+        </li>
+    </ol>
+
+    <div class="note">
+        金色轴点 = <b>有对应模拟可以进</b>，点击右侧按钮即可打开（新标签页，本页不跳走）。<br>
+        回到任意模拟页后，左上角都有 <b>「← 原子探索史」</b> 可以回到这一页。
+    </div>
+
+    <div class="signature" title="悬停查看作者信息">
+        <span class="author-short">作者</span><span class="author-full">张曾继明 · 西南大学 · © 2026</span>
+    </div>
+</body>
+</html>

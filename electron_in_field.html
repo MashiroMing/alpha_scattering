@@ -1,0 +1,1756 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>带电粒子在场中的运动 · 定量探究</title>
+    <style>
+        /* ── 布局口径：与阴极射线 / α 散射同一套 ──────────────────────
+           canvas 内部分辨率恒为 1200×900，只缩 CSS 显示尺寸，
+           物理量一律以「像素 ←→ 米」的比例尺换算，缩放不影响计算结果。 */
+        :root {
+            --side-w: 540px;
+            --canvas-h: min(
+                820px,
+                calc(100vh - 150px),
+                calc((100vw - var(--side-w) - 70px) * 0.75)
+            );
+        }
+        body {
+            font-family: "Microsoft YaHei", sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 14px 20px 20px;
+            min-height: 100vh;
+            margin: 0;
+            box-sizing: border-box;
+        }
+        h1 {
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            margin: 0;
+            font-size: 26px;
+        }
+        .subtitle {
+            color: rgba(255,255,255,0.9);
+            font-size: 13px;
+            margin: 6px 0 12px;
+        }
+        .stage {
+            display: flex;
+            gap: 22px;
+            align-items: flex-start;
+            justify-content: center;
+            width: 100%;
+            max-width: 1880px;
+        }
+        #canvas {
+            border: 3px solid #fff;
+            background: #000;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            height: var(--canvas-h);
+            width: auto;
+            aspect-ratio: 4 / 3;
+            flex: 0 0 auto;
+        }
+        .side {
+            flex: 0 0 var(--side-w);
+            width: var(--side-w);
+            height: var(--canvas-h);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            min-width: 0;
+            /* 右栏内容比画布高时【栏内滚动】，绝不把整页顶高 —— 保证投影一屏放得下 */
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding-right: 2px;
+        }
+        .panel {
+            background: rgba(255,255,255,0.95);
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        .controls {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 11px;
+            padding: 14px 16px;
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+        label {
+            margin-bottom: 6px;
+            font-weight: bold;
+            font-size: 13px;
+            color: #333;
+            white-space: nowrap;
+        }
+        input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+        }
+        label .cap-unit {
+            font-weight: normal;
+            font-size: 12px;
+            color: #8a90a6;
+        }
+        /* 参数行：滑杆粗调 + 数字框精调（可手填，支持任意精度） */
+        .ctl-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+        }
+        .ctl-row input[type="range"] {
+            flex: 1 1 auto;
+            width: auto;
+            min-width: 0;
+        }
+        .ctl-row input[type="number"] {
+            flex: 0 0 96px;
+            width: 96px;
+            padding: 5px 8px;
+            font-size: 13px;
+            font-weight: bold;
+            font-family: inherit;
+            color: #4450b8;
+            background: #f7f8fd;
+            border: 1.5px solid #cfd5e4;
+            border-radius: 8px;
+            box-sizing: border-box;
+            text-align: right;
+        }
+        .ctl-row input[type="number"]:focus {
+            outline: none;
+            border-color: #667eea;
+            background: #fff;
+        }
+        .mode-options {
+            display: flex;
+            gap: 6px;
+        }
+        .mode-option {
+            cursor: pointer;
+            margin-bottom: 0;
+            flex: 1 1 0;
+        }
+        .mode-option input[type="radio"] { display: none; }
+        .mode-option span {
+            display: block;
+            padding: 7px 6px;
+            border: 2px solid #667eea;
+            border-radius: 16px;
+            color: #667eea;
+            font-weight: bold;
+            font-size: 13px;
+            text-align: center;
+            transition: all 0.3s;
+            user-select: none;
+        }
+        .mode-option:hover span { background: rgba(102, 126, 234, 0.1); }
+        .mode-option input[type="radio"]:checked + span {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 3px 8px rgba(102, 126, 234, 0.4);
+        }
+        /* 自定义粒子：q / m 两个数字输入 */
+        .custom-row {
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+        }
+        .custom-row .field {
+            flex: 1 1 0;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+        .custom-row .field span.cap {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 4px;
+            white-space: nowrap;
+        }
+        .custom-row input[type="number"] {
+            width: 100%;
+            padding: 6px 8px;
+            font-size: 13px;
+            font-family: inherit;
+            border: 1.5px solid #cfd5e4;
+            border-radius: 8px;
+            box-sizing: border-box;
+            color: #333;
+        }
+        .custom-row input[type="number"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .unit-hint {
+            font-size: 11px;
+            color: #999;
+            margin-top: 3px;
+            white-space: nowrap;
+        }
+        /* 辅助线勾选 */
+        .chk-row {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .chk {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin: 0;
+            font-size: 12.5px;
+            color: #444;
+            cursor: pointer;
+            white-space: nowrap;
+            user-select: none;
+        }
+        .chk input { cursor: pointer; margin: 0; }
+        .btn-row {
+            display: flex;
+            gap: 8px;
+        }
+        button {
+            padding: 10px 14px;
+            font-size: 14px;
+            cursor: pointer;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 22px;
+            font-weight: bold;
+            font-family: inherit;
+            white-space: nowrap;
+            flex: 1 1 0;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            transition: all 0.3s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(0,0,0,0.3);
+        }
+        button:active { transform: translateY(0); }
+        button.ghost {
+            background: #fff;
+            color: #667eea;
+            border: 2px solid #667eea;
+            box-shadow: none;
+        }
+        /* ── 现象解读卡 ─────────────────────────────────────────── */
+        .reading {
+            padding: 12px 16px 14px;
+            border-left: 5px solid #b4b2a9;
+            transition: border-color 0.35s ease;
+        }
+        .reading[data-mode="straight"] { border-left-color: #888780; }
+        .reading[data-mode="electric"] { border-left-color: #667eea; }
+        .reading[data-mode="magnetic"] { border-left-color: #16a085; }
+        .reading[data-mode="crossed"]  { border-left-color: #e08a1e; }
+        .reading-head {
+            font-size: 15px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 7px;
+        }
+        .reading-body {
+            font-size: 13px;
+            color: #444;
+            line-height: 1.66;
+        }
+        .reading-body strong { color: #764ba2; }
+        .reading[data-mode="electric"] .reading-body strong { color: #4a5ec7; }
+        .reading[data-mode="magnetic"] .reading-body strong { color: #0f7a63; }
+        .reading[data-mode="crossed"] .reading-body strong { color: #c9720d; }
+        /* ── 数据 / 公式面板 ─────────────────────────────────────── */
+        .data {
+            padding: 12px 16px 14px;
+            flex: 0 0 auto;
+        }
+        .dsec { margin-bottom: 12px; }
+        .dsec:last-child { margin-bottom: 0; }
+        .dsec-h {
+            font-size: 12px;
+            font-weight: bold;
+            color: #fff;
+            background: #8e7cc3;
+            border-radius: 6px;
+            padding: 4px 9px;
+            margin-bottom: 5px;
+            letter-spacing: 0.3px;
+        }
+        .dsec.mag .dsec-h { background: #1a9e7a; }
+        .dsec.cross .dsec-h { background: #d98324; }
+        .drow {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 10px;
+            padding: 3px 0;
+            border-bottom: 1px dashed rgba(0,0,0,0.09);
+        }
+        .dlbl {
+            font-size: 12px;
+            color: #555;
+            min-width: 0;
+        }
+        .dfrm {
+            display: block;
+            font-size: 11px;
+            color: #a0a0b0;
+            font-family: Consolas, "Courier New", monospace;
+            white-space: nowrap;
+        }
+        .dval {
+            font-size: 13px;
+            font-weight: bold;
+            color: #2c2c3a;
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
+            text-align: right;
+        }
+        .dval .alt {
+            display: block;
+            font-size: 11px;
+            font-weight: normal;
+            color: #9090a0;
+        }
+        .dval.warn { color: #c0392b; }
+        .dnote {
+            font-size: 11.5px;
+            color: #777;
+            line-height: 1.55;
+            margin-top: 5px;
+        }
+        /* ── 实验说明：默认折叠，展开后在本栏内滚动 ───────────────── */
+        .legend {
+            flex: 0 0 auto;
+            display: flex;
+            flex-direction: column;
+            font-size: 13px;
+            color: #333;
+            overflow: hidden;
+        }
+        .legend:not([open]) { margin-top: auto; }
+        .legend[open] { flex: 1 1 auto; min-height: 0; }
+        .legend > summary {
+            cursor: pointer;
+            padding: 12px 16px;
+            font-weight: bold;
+            font-size: 14px;
+            list-style: none;
+            display: flex;
+            align-items: center;
+            user-select: none;
+        }
+        .legend > summary::-webkit-details-marker { display: none; }
+        .legend > summary::after {
+            content: "展开 ▾";
+            margin-left: auto;
+            font-size: 12px;
+            font-weight: normal;
+            color: #8e7cc3;
+        }
+        .legend[open] > summary { border-bottom: 1px solid rgba(142,124,195,0.25); }
+        .legend[open] > summary::after { content: "收起 ▴"; }
+        .legend-body {
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow-y: auto;
+            padding: 4px 16px 14px;
+            line-height: 1.6;
+        }
+        .legend ul { list-style: none; margin: 0; padding: 0; }
+        .legend li {
+            position: relative;
+            padding-left: 18px;
+            margin: 8px 0;
+        }
+        .legend li::before {
+            content: "";
+            position: absolute;
+            left: 3px;
+            top: 8px;
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: #8e7cc3;
+        }
+        .legend code {
+            font-family: Consolas, "Courier New", monospace;
+            background: rgba(102, 126, 234, 0.1);
+            padding: 1px 5px;
+            border-radius: 4px;
+            color: #4a5ec7;
+        }
+        /* ── 固定件：返回入口 + 署名 ─────────────────────────────── */
+        .home-link {
+            position: fixed;
+            left: 20px;
+            top: 16px;
+            padding: 7px 16px;
+            background: rgba(255,255,255,0.82);
+            color: #555;
+            font-size: 13px;
+            border-radius: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.12);
+            text-decoration: none;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            letter-spacing: 0.3px;
+            z-index: 1000;
+            transition: background 0.3s, color 0.3s, transform 0.3s;
+        }
+        .home-link:hover {
+            background: rgba(255,255,255,0.96);
+            color: #333;
+            transform: translateY(-1px);
+        }
+        .signature {
+            position: fixed;
+            right: 20px;
+            bottom: 15px;
+            padding: 8px 18px;
+            background: rgba(255, 255, 255, 0.82);
+            color: #555;
+            font-size: 13px;
+            border-radius: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.12);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            user-select: none;
+            z-index: 1000;
+            cursor: pointer;
+            letter-spacing: 0.3px;
+            display: flex;
+            align-items: center;
+            white-space: nowrap;
+            transition: background 0.35s ease, color 0.35s ease,
+                        box-shadow 0.35s ease, transform 0.35s ease;
+        }
+        .signature .author-short {
+            display: inline-block;
+            max-width: 80px;
+            overflow: hidden;
+            transition: max-width 0.35s ease, opacity 0.3s ease;
+        }
+        .signature .author-full {
+            display: inline-block;
+            max-width: 0;
+            opacity: 0;
+            margin-left: 0;
+            overflow: hidden;
+            transition: max-width 0.35s ease, opacity 0.35s ease 0.05s,
+                        margin-left 0.35s ease;
+        }
+        .signature:hover {
+            background: rgba(255, 255, 255, 0.95);
+            color: #333;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.2);
+            transform: translateY(-1px);
+        }
+        .signature:hover .author-full {
+            max-width: 260px;
+            opacity: 1;
+            margin-left: 10px;
+        }
+        @media (max-width: 1080px) {
+            :root { --canvas-h: min(660px, calc(100vh - 150px)); }
+            .stage { flex-direction: column; align-items: center; }
+            .side { width: 100%; flex: 0 0 auto; height: auto; }
+            .legend-body { max-height: 340px; }
+            .data { max-height: 420px; }
+        }
+    </style>
+</head>
+<body>
+    <a class="home-link" href="index.html">← 原子探索史</a>
+
+    <h1>🧲 带电粒子在场中的运动 · 定量探究</h1>
+    <div class="subtitle">从阴极射线到示波管：加速 → 电偏转（类平抛）→ 磁偏转（圆周）→ 正交场测荷质比</div>
+
+    <div class="stage">
+        <canvas id="canvas" width="1200" height="900"></canvas>
+
+        <div class="side">
+            <div class="panel controls">
+                <div class="control-group">
+                    <label>粒子种类（决定 q 与 m）</label>
+                    <div class="mode-options">
+                        <label class="mode-option">
+                            <input type="radio" name="pt" value="electron" checked>
+                            <span>电子</span>
+                        </label>
+                        <label class="mode-option">
+                            <input type="radio" name="pt" value="proton">
+                            <span>质子</span>
+                        </label>
+                        <label class="mode-option">
+                            <input type="radio" name="pt" value="alpha">
+                            <span>α 粒子</span>
+                        </label>
+                        <label class="mode-option">
+                            <input type="radio" name="pt" value="custom">
+                            <span>自定义</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="control-group" id="customRow" hidden>
+                    <div class="custom-row">
+                        <div class="field">
+                            <span class="cap">电荷量 q</span>
+                            <input type="number" id="qE" value="1" step="0.5">
+                            <span class="unit-hint">单位：元电荷 e（负号表示带负电）</span>
+                        </div>
+                        <div class="field">
+                            <span class="cap">质量 m</span>
+                            <input type="number" id="mU" value="1" step="0.5">
+                            <span class="unit-hint">单位：原子质量单位 u（质子 ≈ 1）</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label for="u0n">加速电压 U₀<span class="cap-unit"> / V</span></label>
+                    <div class="ctl-row">
+                        <input type="range" id="u0" min="100" max="5000" step="100" value="2000">
+                        <input type="number" id="u0n" step="any" value="2000" title="可直接填写，支持任意精度">
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label for="un">偏转电压 U（极板间）<span class="cap-unit"> / V（负值＝电场反向）</span></label>
+                    <div class="ctl-row">
+                        <input type="range" id="u" min="-400" max="400" step="10" value="200">
+                        <input type="number" id="un" step="any" value="200">
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label for="bn">磁感应强度 B<span class="cap-unit"> / mT（正值＝⊗ 向里）</span></label>
+                    <div class="ctl-row">
+                        <input type="range" id="b" min="-20" max="20" step="0.05" value="0">
+                        <input type="number" id="bn" step="any" value="0">
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label for="dn">板出口 → 荧光屏距离 D<span class="cap-unit"> / cm</span></label>
+                    <div class="ctl-row">
+                        <input type="range" id="dCm" min="2" max="12.5" step="0.1" value="11.5">
+                        <input type="number" id="dn" step="any" value="11.5">
+                    </div>
+                    <div class="unit-hint">滑杆粗调，右侧数字框可手填任意精度：D 越大，同样的偏转角被放得越开（Y = y₁ + D·tanθ）</div>
+                </div>
+
+                <div class="control-group">
+                    <label>辅助显示</label>
+                    <div class="chk-row">
+                        <label class="chk"><input type="checkbox" id="showVec" checked><span>速度分解</span></label>
+                        <label class="chk"><input type="checkbox" id="showBack" checked><span>反向延长线</span></label>
+                        <label class="chk"><input type="checkbox" id="showCircle" checked><span>磁场圆心 / 半径</span></label>
+                    </div>
+                </div>
+
+                <div class="btn-row">
+                    <button id="btnPreElec" class="ghost">⚡ 类平抛</button>
+                    <button id="btnPreMag" class="ghost">🌀 磁场圆周</button>
+                    <button id="btnBalance" class="ghost">⚖ 汤姆逊配平</button>
+                </div>
+                <div class="btn-row">
+                    <button id="btnPlay">⏸ 暂停</button>
+                    <button id="btnEmit">▶ 发射</button>
+                    <button id="btnReset" class="ghost">🔄 重置</button>
+                </div>
+            </div>
+
+            <div class="panel reading" id="reading" data-mode="electric">
+                <div class="reading-head" id="readingHead">观察到的现象</div>
+                <div class="reading-body" id="readingBody"></div>
+            </div>
+
+            <div class="panel data">
+                <div class="dsec">
+                    <div class="dsec-h">① 电场加速（阴极 → 阳极）</div>
+                    <div class="drow">
+                        <div class="dlbl">进入偏转区的速率 v<span class="dfrm">v = √(2qU₀/m)</span></div>
+                        <div class="dval" id="d_v">—</div>
+                    </div>
+                    <div class="drow">
+                        <div class="dlbl">加速历时 t₀<span class="dfrm">L_acc = v·t₀/2</span></div>
+                        <div class="dval" id="d_t0">—</div>
+                    </div>
+                </div>
+
+                <div class="dsec">
+                    <div class="dsec-h">② 电场偏转：类平抛运动</div>
+                    <div class="drow">
+                        <div class="dlbl">板间场强 E<span class="dfrm">E = U/d，d = 2.00 cm</span></div>
+                        <div class="dval" id="d_E">—</div>
+                    </div>
+                    <div class="drow">
+                        <div class="dlbl">横向加速度 a<span class="dfrm">a = qE/m</span></div>
+                        <div class="dval" id="d_a">—</div>
+                    </div>
+                    <div class="drow">
+                        <div class="dlbl">穿越极板用时 t₁<span class="dfrm">t₁ = L/v，L = 7.50 cm</span></div>
+                        <div class="dval" id="d_t1">—</div>
+                    </div>
+                    <div class="drow">
+                        <div class="dlbl">出板时侧移 y₁<span class="dfrm">y₁ = ½at₁² = UL²/(4dU₀)</span></div>
+                        <div class="dval" id="d_y1">—</div>
+                    </div>
+                    <div class="drow">
+                        <div class="dlbl">偏转角正切 tanθ<span class="dfrm">tanθ = v⊥/v = UL/(2dU₀)</span></div>
+                        <div class="dval" id="d_tan">—</div>
+                    </div>
+                    <div class="drow">
+                        <div class="dlbl">板出口 → 荧光屏距离 D<span class="dfrm">右栏滑杆可调 2.0 – 12.5 cm</span></div>
+                        <div class="dval" id="d_D">—</div>
+                    </div>
+                    <div class="drow">
+                        <div class="dlbl">荧光屏上总偏移 Y<span class="dfrm" id="d_Yfrm">Y = y₁ + D·tanθ</span></div>
+                        <div class="dval" id="d_Y">—</div>
+                    </div>
+                </div>
+
+                <div class="dsec mag">
+                    <div class="dsec-h">③ 磁场偏转：匀速圆周运动</div>
+                    <div class="drow">
+                        <div class="dlbl">轨道半径 R<span class="dfrm">R = mv/(qB)</span></div>
+                        <div class="dval" id="d_R">—</div>
+                    </div>
+                    <div class="drow">
+                        <div class="dlbl">回旋周期 T<span class="dfrm">T = 2πm/(qB)</span></div>
+                        <div class="dval" id="d_T">—</div>
+                    </div>
+                    <div class="drow">
+                        <div class="dlbl">在场区内转过的圆心角 φ<span class="dfrm">sinφ = 弦长/(2R)</span></div>
+                        <div class="dval" id="d_phi">—</div>
+                    </div>
+                    <div class="drow">
+                        <div class="dlbl">出射偏向角 β<span class="dfrm">β = 圆心角 φ（偏向角等于圆心角）</span></div>
+                        <div class="dval" id="d_beta">—</div>
+                    </div>
+                </div>
+
+                <div class="dsec cross">
+                    <div class="dsec-h">④ 正交电磁场 · 汤姆逊测荷质比</div>
+                    <div class="drow">
+                        <div class="dlbl">速度选择器条件<span class="dfrm">v = E/B</span></div>
+                        <div class="dval" id="d_sel">—</div>
+                    </div>
+                    <div class="drow">
+                        <div class="dlbl">测量值 |q|/m<span class="dfrm">q/m = v²/(2U₀) = E²/(2U₀B²)</span></div>
+                        <div class="dval" id="d_qm">—</div>
+                    </div>
+                    <div class="drow">
+                        <div class="dlbl">理论值 |q|/m<span class="dfrm">由粒子自身的 q、m 算出</span></div>
+                        <div class="dval" id="d_qmt">—</div>
+                    </div>
+                    <div class="dnote" id="d_qmnote">把 U 调到非零、再点「汤姆逊配平」，让电场偏转与磁场偏转正好抵消，即可反推出 q/m。</div>
+                </div>
+            </div>
+
+            <details class="panel legend">
+                <summary>💡 <strong>怎么用 / 公式速查</strong></summary>
+                <div class="legend-body">
+                    <ul>
+                        <li><strong>这是一套串起来的装置：</strong>左边<strong>阴极—阳极</strong>用 <code>U₀</code> 把粒子从静止加速；中间<strong>平行板</strong>加 <code>U</code> 让它类平抛；右边<strong>圆形有界磁场</strong>加 <code>B</code> 让它转圆弧；最后打在<strong>荧光屏</strong>上。</li>
+                        <li><strong>比例尺：</strong>画面 1 cm = 40 px。极板长 <code>L = 7.50 cm</code>、间距 <code>d = 2.00 cm</code>、磁场区半径 <code>4.00 cm</code>（正交场工况下改为与极板同宽同区间的矩形）、屏距 <code>D</code> 由滑杆调节（<code>2.0 – 12.5 cm</code>，默认 11.5 cm）——全部是真实尺寸，面板里的数字可直接拿去做题。</li>
+                        <li><strong>参数可以手填：</strong>每个滑杆右边都有数字框，支持<strong>任意精度</strong>——比如汤姆逊配平要用的 <code>B = 0.3769 mT</code>，或 <code>U₀ = 1837.5 V</code>。填的值超出滑杆量程也没关系（滑杆会自动扩量程容纳），只有屏距 <code>D</code> 受画布限制夹在 <code>0.5 – 12.8 cm</code>。按 <kbd>Enter</kbd> 或点开别处即生效。</li>
+                        <li><strong>拖 D 滑杆能看什么：</strong>荧光屏会真的在装置上左右移动，屏上那根黄色尺寸线就是偏移量的读数。<code>Y = y₁ + D·tanθ</code> —— <code>y₁</code> 与 <code>tanθ</code> 都不随 <code>D</code> 变，所以 <code>Y</code> 对 <code>D</code> 是一次函数：屏幕拉远，同样的偏转角被"杠杆"放得更大，这正是示波管要长脖子的原因。</li>
+                        <li><strong>三条主线（对应三种工况）：</strong><br>① 只加 <code>U</code>：抛物线，<code>y₁ = UL²/(4dU₀)</code>、<code>tanθ = UL/(2dU₀)</code>；<br>② 只加 <code>B</code>：圆弧，<code>R = mv/(qB)</code>、<code>T = 2πm/(qB)</code>；<br>③ 同时加 <code>U</code> 和 <code>B</code>：正交场，<code>v = E/B</code> 时不偏转。</li>
+                        <li><strong>必考几何结论：</strong>出射速度方向<strong>反向延长，必过极板中点</strong>（图中那条虚线）。这条线一画，<code>Y = y₁ + D·tanθ</code> 里的 <code>D</code> 该从哪量起就再也不会错。</li>
+                        <li><strong>换粒子看差异：</strong>换成质子 / α 粒子，<code>y₁</code>、<code>tanθ</code> 竟然<strong>完全不变</strong>（公式里 q、m 被 U₀ 抵消了）——但磁场里的 <code>R</code>、<code>T</code> 差了几千倍，<code>B</code> 的量程也会自动跟着换。</li>
+                        <li><strong>汤姆逊配平：</strong>先给一个非零的 <code>U</code>，点按钮自动扫出使净偏转为零的 <code>B</code>，此时 <code>qE = qvB</code>，代入 <code>½mv² = qU₀</code> 就得 <code>q/m = E²/(2U₀B²)</code>——这正是 1897 年汤姆逊测电子荷质比的思路，也是"阴极射线"这一页的源头。注意正交场工况下<strong>磁场区被裁成与极板同宽</strong>：两个场作用在同一段区域，粒子一出板就再无场力，所以配平后是<strong>沿中轴直线飞到屏正中</strong>（教科书里速度选择器的样子），不会"出了板又被磁场拐一下"。</li>
+                        <li><strong>推荐课堂动线：</strong>① 只加 U → 讲类平抛怎么"拆成两个方向"来算，再勾上「反向延长线」坐实那条几何结论；② 撤掉 U 换成 B → 讲圆心怎么找、<code>T</code> 与速率无关；③ U、B 同时加 → 配平，反推 q/m。</li>
+                    </ul>
+                </div>
+            </details>
+        </div>
+    </div>
+
+    <div class="signature" title="悬停查看作者信息">
+        <span class="author-short">作者</span><span class="author-full">张曾继明 · 西南大学 · © 2026</span>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        // ══ 单位与几何口径（改动必须同步 probe-electron-field.js 的常量断言）══
+        const PX_PER_M = 4000;              // 画面 1 cm = 40 px
+        const CM_PX     = 40;
+        const QE        = 1.602176634e-19;  // 元电荷 C
+        const U_MASS    = 1.66053906660e-27;// 原子质量单位 kg
+
+        const Y_AXIS   = 450;               // 装置中轴
+        const TUBE     = { x0: 66, y0: 236, x1: 330, y1: 664, r: 60 };
+        const X_CATHODE = 104;              // 阴极发射面
+        const X_ANODE_A = 262;              // 双孔阳极（第一片）
+        const X_ANODE_B = 296;              // 第二片：越过这里即完成加速
+
+        const PLATE      = { x0: 360, x1: 660, gapCm: 2.0, h: 12 };
+        const PLATE_GAP  = PLATE.gapCm * CM_PX;              // 80 px
+        const PLATE_L_M  = (PLATE.x1 - PLATE.x0) / PX_PER_M; // 7.5 cm
+        const PLATE_D_M  = PLATE.gapCm / 100;                // 2.0 cm
+
+        const BFIELD = { cx: 880, cy: 450, r: 160 };         // 有界磁场圆 4 cm
+        const BF_R_M = BFIELD.r / PX_PER_M;
+
+        // 交叉场（速度选择器）的磁场区：与极板【同宽同区间】。
+        //   两个场必须作用在同一段区域上，才谈得上"互相抵消"；
+        //   而且一旦场区越过板出口只剩 B，配平后粒子会立刻被洛伦兹力重新掰弯，
+        //   屏上光斑要偏出约 1 cm —— 那就不是教科书里那条"不偏不倚的直线"了。
+        //   hHalf 只影响观感：U≠0 时粒子一旦偏离中轴超过半间距就撞板，物理上走不出这个高度。
+        const B_CROSS = { x0: PLATE.x0, x1: PLATE.x1, hHalf: 130 };
+
+        // 荧光屏【可移动】：D = 板出口 → 屏 的距离（cm），由右栏滑杆调节
+        // 滑杆量程 [min, max]；手填的硬限制 [minHard, maxHard] —— 屏柱必须整个留在画布内
+        const SCREEN_D  = { min: 2.0, max: 12.5, minHard: 0.5, maxHard: 12.8, def: 11.5 };
+        let   X_SCREEN  = 1120;
+        const SCREEN_PLATE = { y0: 96, y1: 804 };
+        let   AFTER_M = (X_SCREEN - PLATE.x1) / PX_PER_M;    // 板出口 → 屏
+        function updateScreenX() {
+            X_SCREEN = PLATE.x1 + state.dCm * CM_PX;
+            AFTER_M  = state.dCm / 100;
+        }
+
+        const PARTICLES = {
+            electron: { label: '电子',   q: -1, m: 9.1093837015e-31, color: '#7fd8ff' },
+            proton:   { label: '质子',   q:  1, m: 1.67262192369e-27, color: '#ffd166' },
+            alpha:    { label: 'α 粒子', q:  2, m: 6.6446573357e-27, color: '#c9a7f5' }
+        };
+        // 磁场量程随粒子自动切换：重的粒子需要大得多的 B 才看得见圆弧
+        const B_RANGE = {
+            electron: { max: 20,  step: 0.01 },
+            proton:   { max: 500, step: 0.5 },
+            alpha:    { max: 700, step: 0.5 },
+            custom:   { max: 300, step: 0.2 }
+        };
+
+        // ══ 状态 ══════════════════════════════════════════════════
+        const state = {
+            pt: 'electron',
+            qE: 1, mU: 1,          // 自定义粒子：以 e、u 为单位
+            u0: 2000, u: 200, b: 0,
+            dCm: SCREEN_D.def,         // 板出口 → 荧光屏距离（cm）
+            showVec: true, showBack: true, showCircle: true,
+            playing: true,
+            balancedQm: null        // 配平成功后记录 {qm, err, b}
+        };
+
+        function activeParticle() {
+            if (state.pt === 'custom') {
+                return { q: state.qE * QE, m: state.mU * U_MASS, label: '自定义粒子', color: '#9fe1cb' };
+            }
+            const p = PARTICLES[state.pt];
+            return { q: p.q * QE, m: p.m, label: p.label, color: p.color };
+        }
+
+        function scenario() {
+            if (state.u !== 0 && state.b !== 0) return 'crossed';
+            if (state.u !== 0) return 'electric';
+            if (state.b !== 0) return 'magnetic';
+            return 'straight';
+        }
+
+        // ══ 数字排版 ═══════════════════════════════════════════════
+        const SUP = { '-': '⁻', '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴',
+                      '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹' };
+        function sup(n) { return String(n).split('').map(function (c) { return SUP[c] || c; }).join(''); }
+        function trim(x, d) {
+            let s = x.toFixed(d);
+            if (s.indexOf('.') >= 0) s = s.replace(/0+$/, '').replace(/\.$/, '');
+            return s;
+        }
+        function sci(x, d) {
+            d = (d === undefined) ? 3 : d;
+            if (!isFinite(x)) return '—';
+            if (x === 0) return '0';
+            const ex = Math.floor(Math.log10(Math.abs(x)));
+            if (ex >= -2 && ex <= 3) return trim(x, Math.max(0, d - 1 - Math.max(0, ex)));
+            const mant = x / Math.pow(10, ex);
+            return trim(mant, d) + '×10' + sup(ex);
+        }
+        // 长度：自动切 mm / cm / m
+        function len(m) {
+            if (!isFinite(m)) return '—';
+            const a = Math.abs(m);
+            if (a < 1e-3) return sci(m * 1e6, 3) + ' µm';
+            if (a < 1e-2) return trim(m * 1000, 2) + ' mm';
+            if (a < 1)    return trim(m * 100, 2) + ' cm';
+            return trim(m, 3) + ' m';
+        }
+        function time(t) {
+            if (!isFinite(t)) return '—';
+            if (t < 1e-6) return sci(t * 1e9, 3) + ' ns';
+            if (t < 1e-3) return sci(t * 1e6, 3) + ' µs';
+            return sci(t, 3) + ' s';
+        }
+
+        // ══ 轨迹计算 ═══════════════════════════════════════════════
+        // 屏幕坐标为 x 右、y 下；B_in > 0 表示磁场垂直纸面向里（⊗）。
+        //   电场：上板接正（U>0）→ E 指向屏幕 +y；a_y = qE/m（电子 q<0 → 向上弯）
+        //   磁场：F = qv×B →  a_x = q·B·v_y/m，a_y = −q·B·v_x/m
+        function computeTrajectory(o) {
+            o = o || {};
+            const P = (o.q !== undefined && o.m !== undefined)
+                ? { q: o.q, m: o.m }
+                : activeParticle();
+            const U0 = (o.u0 !== undefined) ? o.u0 : state.u0;
+            const U  = (o.u  !== undefined) ? o.u  : state.u;
+            const Bin = (((o.b !== undefined) ? o.b : state.b)) * 1e-3;   // mT → T
+            const q = P.q, m = P.m;
+
+            const v  = Math.sqrt(2 * Math.abs(q) * U0 / m);   // 出阳极速率
+            const E  = U / PLATE_D_M;                          // 板间场强 V/m
+            const aE = q * E / m;                              // 屏幕 y 方向加速度
+            const Lacc = (X_ANODE_B - X_CATHODE) / PX_PER_M;
+            const aAcc = (v * v) / (2 * Lacc);                 // 加速段匀加速度 → 末端恰为 v
+
+            // 步长：粒子每步前进约 0.3 px；磁场里再限制到每周期 ≥3000 步
+            const MAX_STEPS = 120000;
+            let dt = 0.3 / (v * PX_PER_M);
+            if (Bin !== 0) {
+                const Tc = 2 * Math.PI * m / (Math.abs(q) * Math.abs(Bin));
+                dt = Math.min(dt, Tc / 3000);
+            }
+            // 兜底：参数被手填得很极端时（例如很强的 B），按周期限定的步长会让总步数爆表
+            //   → 给一个步长下限，保证 MAX_STEPS 步内能走完"装置全长"。
+            //   宁可略降精度，也不能让轨迹莫名其妙断在半路。
+            dt = Math.max(dt, (X_SCREEN - X_CATHODE) * 1.6 / (v * PX_PER_M) / MAX_STEPS);
+
+            const gapHalf = PLATE_GAP / 2;
+            const insideCircle = function (x, y) {
+                return (x - BFIELD.cx) * (x - BFIELD.cx) + (y - BFIELD.cy) * (y - BFIELD.cy) < BFIELD.r * BFIELD.r;
+            };
+            // 交叉场（U、B 同时加）：磁场区【与极板同宽同区间】。
+            //   两个场作用在同一段区域上、且出板即离场 —— 这正是速度选择器 / 汤姆逊测荷质比的前提：
+            //   配平后粒子沿中轴直线穿出，出板之后再无场力，光斑落在屏正中。
+            const crossMode = (U !== 0 && Bin !== 0);
+            const insideB = crossMode
+                ? function (x, y) {
+                      return x >= B_CROSS.x0 && x <= B_CROSS.x1 &&
+                             Math.abs(y - BFIELD.cy) <= B_CROSS.hHalf;
+                  }
+                : insideCircle;
+            const accel = function (x, y, vx, vy) {
+                let ax = 0, ay = 0;
+                if (x < X_ANODE_B) ax += aAcc;
+                if (U !== 0 && x >= PLATE.x0 && x <= PLATE.x1 &&
+                    y > Y_AXIS - gapHalf && y < Y_AXIS + gapHalf) ay += aE;
+                if (Bin !== 0 && insideB(x, y)) {
+                    ax += q * Bin * vy / m;
+                    ay += -q * Bin * vx / m;
+                }
+                return [ax, ay];
+            };
+
+            let x = X_CATHODE, y = Y_AXIS, vx = 0, vy = 0, t = 0;
+            const pts = [{ x: x, y: y }];
+            const ev = {
+                hit: null, tEnd: 0, exitPlate: null, enterB: null, exitB: null,
+                yScreen: null, steps: 0
+            };
+            let wasInB = false;
+            let A = accel(x, y, vx, vy);
+            let ax = A[0], ay = A[1];
+
+            for (let i = 0; i < MAX_STEPS; i++) {
+                vx += ax * dt / 2; vy += ay * dt / 2;
+                const px = x, py = y;
+                x += vx * dt * PX_PER_M;
+                y += vy * dt * PX_PER_M;
+                t += dt;
+                A = accel(x, y, vx, vy); ax = A[0]; ay = A[1];
+                vx += ax * dt / 2; vy += ay * dt / 2;
+
+                // —— 事件记录（都在更新后的这一步上判定，误差 < 0.3 px）
+                if (ev.exitPlate === null && px < PLATE.x1 && x >= PLATE.x1) {
+                    ev.exitPlate = { x: PLATE.x1, y: y, vx: vx, vy: vy, t: t, v: Math.hypot(vx, vy) };
+                }
+                const inB = insideB(x, y);
+                if (Bin !== 0) {
+                    if (inB && !wasInB) ev.enterB = { x: x, y: y, t: t, vx: vx, vy: vy, v: Math.hypot(vx, vy) };
+                    if (!inB && wasInB) ev.exitB = { x: x, y: y, t: t, vx: vx, vy: vy };
+                }
+                wasInB = inB;
+
+                pts.push({ x: x, y: y });
+
+                // —— 终止条件
+                if (U !== 0 && x >= PLATE.x0 && x <= PLATE.x1 &&
+                    (y <= Y_AXIS - gapHalf || y >= Y_AXIS + gapHalf)) {
+                    ev.hit = 'plate'; break;
+                }
+                if (px < X_SCREEN && x >= X_SCREEN) {
+                    const f = (X_SCREEN - px) / (x - px);
+                    const ys = py + (y - py) * f;
+                    ev.yScreen = ys;
+                    ev.hit = (ys < SCREEN_PLATE.y0 || ys > SCREEN_PLATE.y1) ? 'screen-out' : 'screen';
+                    pts[pts.length - 1] = { x: X_SCREEN, y: ys };
+                    break;
+                }
+                if (y < -20 || y > canvas.height + 20 || x > canvas.width + 20) { ev.hit = 'out'; break; }
+            }
+            ev.tEnd = t;
+            ev.steps = pts.length;
+
+            if (ev.hit === null) ev.hit = 'free';
+
+            // ── 解析值（供面板显示 + 探针自校验）
+            const t1   = PLATE_L_M / v;
+            const y1A  = -0.5 * aE * t1 * t1;          // 上偏为正
+            const vyA  = -aE * t1;                      // 上偏对应的横向速度（上为正）
+            const tanA = vyA / v;
+            const AY   = y1A + AFTER_M * tanA;
+            const absB = Math.abs(Bin);
+            const R    = absB > 0 ? m * v / (Math.abs(q) * absB) : Infinity;
+            const Tc   = absB > 0 ? 2 * Math.PI * m / (Math.abs(q) * absB) : Infinity;
+
+            // 数值结果：换成"上偏为正"的米制
+            const y1N  = ev.exitPlate ? (Y_AXIS - ev.exitPlate.y) / PX_PER_M : null;
+            // tanθ = v⊥/v∥ —— 分母是【沿板方向的分量 vx】，不是合速度
+            const tanN = ev.exitPlate ? -(ev.exitPlate.vy / ev.exitPlate.vx) : null;
+            const YN   = ev.yScreen !== null ? (Y_AXIS - ev.yScreen) / PX_PER_M : null;
+
+            // 磁场：弦长 → 圆心角 φ = 2·arcsin(弦长/2R)
+            let phiDeg = null;
+            if (ev.enterB && ev.exitB && isFinite(R)) {
+                const chord = Math.hypot(ev.exitB.x - ev.enterB.x, ev.exitB.y - ev.enterB.y) / PX_PER_M;
+                const s = Math.min(1, chord / (2 * R));
+                phiDeg = 2 * Math.asin(s) * 180 / Math.PI;
+            }
+
+            // 圆轨道圆心（屏幕坐标）：圆心 = 入射点 + R·（洛伦兹力方向的单位矢）
+            let circle = null;
+            if (ev.enterB && Bin !== 0 && isFinite(R) && R < 4) {
+                const Rp = R * PX_PER_M;
+                const sp = Math.hypot(ev.enterB.vx, ev.enterB.vy) || 1;
+                const vxi = ev.enterB.vx / sp, vyi = ev.enterB.vy / sp;
+                let axu = q * Bin * vyi / m, ayu = -q * Bin * vxi / m;
+                const nn = Math.hypot(axu, ayu) || 1;
+                circle = {
+                    x: ev.enterB.x + Rp * axu / nn,
+                    y: ev.enterB.y + Rp * ayu / nn,
+                    r: Rp
+                };
+            }
+
+            return {
+                pts: pts, ev: ev, P: P, v: v, crossMode: crossMode,
+                an: { v: v, E: E, aE: aE, t1: t1, y1: y1A, vy: vyA, tan: tanA, Y: AY, R: R, T: Tc },
+                num: { y1: y1N, tan: tanN, Y: YN, phi: phiDeg },
+                circle: circle, Bin: Bin, U0: U0, U: U, tAccel: (X_ANODE_B - X_CATHODE) / PX_PER_M / (v / 2)
+            };
+        }
+
+        // 汤姆逊配平：沿 ±B 扫描，找出使「出板时净侧移」变号的位置，再二分逼近零点
+        function solveBalance() {
+            const P = activeParticle();
+            if (state.u === 0) return null;
+            const rng = B_RANGE[state.pt];
+            const metric = function (b) {
+                const r = computeTrajectory({ q: P.q, m: P.m, b: b });
+                return r.ev.exitPlate ? (Y_AXIS - r.ev.exitPlate.y) : NaN;   // 上偏为正（px）
+            };
+            const y0 = metric(0);
+            if (!isFinite(y0)) return null;
+
+            let best = null, bestAbs = Infinity;
+            [1, -1].forEach(function (sgn) {
+                const N = 200;
+                let pb = 0, py = y0;
+                for (let i = 1; i <= N; i++) {
+                    const b = sgn * rng.max * i / N;
+                    const y = metric(b);
+                    if (isFinite(y) && isFinite(py) && py * y <= 0) {
+                        let lo = pb, hi = b, flo = py;
+                        for (let k = 0; k < 48; k++) {
+                            const mid = (lo + hi) / 2;
+                            const ym = metric(mid);
+                            if (!isFinite(ym)) break;
+                            if (ym * flo <= 0) { hi = mid; } else { lo = mid; flo = ym; }
+                        }
+                        const rb = (lo + hi) / 2;
+                        if (Math.abs(rb) < bestAbs) { bestAbs = Math.abs(rb); best = rb; }
+                    }
+                    pb = b; py = y;
+                }
+            });
+            return best;
+        }
+
+        // ══ 绘制 ═══════════════════════════════════════════════════
+        let cache = null;      // 缓存最近一次轨迹，参数不变时不重算
+
+        function drawGrid() {
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+            ctx.lineWidth = 1;
+            for (let x = 0; x <= canvas.width; x += 40) {
+                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+            }
+            for (let y = 0; y <= canvas.height; y += 40) {
+                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+            }
+        }
+
+        function drawTube() {
+            ctx.save();
+            ctx.beginPath();
+            ctx.roundRect(TUBE.x0, TUBE.y0, TUBE.x1 - TUBE.x0, TUBE.y1 - TUBE.y0, TUBE.r);
+            ctx.fillStyle = 'rgba(120, 160, 255, 0.045)';
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(180, 205, 255, 0.35)';
+            ctx.lineWidth = 2.5;
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(TUBE.x0 + 130, TUBE.y0 + 60, 105, Math.PI * 1.05, Math.PI * 1.5);
+            ctx.strokeStyle = 'rgba(220, 235, 255, 0.16)';
+            ctx.lineWidth = 5;
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        function drawCathode() {
+            ctx.save();
+            const g = ctx.createLinearGradient(X_CATHODE - 18, 0, X_CATHODE + 8, 0);
+            g.addColorStop(0, '#5b6377'); g.addColorStop(1, '#9aa4bb');
+            ctx.fillStyle = g;
+            ctx.beginPath();
+            ctx.roundRect(X_CATHODE - 18, 352, 20, 196, 5);
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(200, 215, 255, 0.5)';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+            const gl = ctx.createRadialGradient(X_CATHODE, Y_AXIS, 0, X_CATHODE, Y_AXIS, 64);
+            gl.addColorStop(0, 'rgba(150, 200, 255, 0.30)');
+            gl.addColorStop(1, 'rgba(150, 200, 255, 0)');
+            ctx.fillStyle = gl;
+            ctx.fillRect(X_CATHODE - 64, Y_AXIS - 64, 128, 128);
+            ctx.restore();
+        }
+
+        // 双孔阳极：两片带孔的板，孔对准中轴
+        function drawAnode() {
+            ctx.save();
+            [X_ANODE_A, X_ANODE_B].forEach(function (ax) {
+                ctx.fillStyle = 'rgba(150, 165, 195, 0.85)';
+                ctx.fillRect(ax - 7, Y_AXIS - 118, 14, 66);
+                ctx.fillRect(ax - 7, Y_AXIS + 52, 14, 66);
+                ctx.strokeStyle = 'rgba(215, 230, 255, 0.55)';
+                ctx.lineWidth = 1.2;
+                ctx.strokeRect(ax - 7, Y_AXIS - 118, 14, 66);
+                ctx.strokeRect(ax - 7, Y_AXIS + 52, 14, 66);
+            });
+            ctx.restore();
+        }
+
+        function drawPlates() {
+            if (state.u === 0) return;
+            const gapHalf = PLATE_GAP / 2;
+            ctx.save();
+            const top = Y_AXIS - gapHalf - PLATE.h, bot = Y_AXIS + gapHalf;
+            [[top, state.u > 0 ? '＋' : '−', state.u > 0 ? '#ff6b6b' : '#4dabf7'],
+             [bot, state.u > 0 ? '−' : '＋', state.u > 0 ? '#4dabf7' : '#ff6b6b']].forEach(function (p) {
+                const g = ctx.createLinearGradient(0, p[0], 0, p[0] + PLATE.h);
+                g.addColorStop(0, '#e8eef8'); g.addColorStop(1, '#a9b6cc');
+                ctx.fillStyle = g;
+                ctx.beginPath();
+                ctx.roundRect(PLATE.x0, p[0], PLATE.x1 - PLATE.x0, PLATE.h, 3);
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+                ctx.fillStyle = p[2];
+                ctx.font = 'bold 26px "Microsoft YaHei", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(p[1], PLATE.x1 + 22, p[0] + PLATE.h / 2);
+            });
+            // 板间电场线（方向随 U 符号翻转）
+            ctx.strokeStyle = 'rgba(255, 190, 150, 0.28)';
+            ctx.lineWidth = 1;
+            const dir = state.u > 0 ? 1 : -1;
+            for (let x = PLATE.x0 + 26; x <= PLATE.x1 - 26; x += 52) {
+                ctx.beginPath();
+                ctx.moveTo(x, Y_AXIS - dir * (gapHalf - 6));
+                ctx.lineTo(x, Y_AXIS + dir * (gapHalf - 6));
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(x - 4, Y_AXIS + dir * (gapHalf - 16));
+                ctx.lineTo(x, Y_AXIS + dir * (gapHalf - 6));
+                ctx.lineTo(x + 4, Y_AXIS + dir * (gapHalf - 16));
+                ctx.stroke();
+            }
+            ctx.restore();
+        }
+
+        // 磁场区域：单独加磁场时是【圆形有界磁场】；与极板电场同时加的是
+        // 【与极板同宽同区间的矩形】——两个场同轴同区域，偏转才可能互相抵消；
+        // 出板即离场，配平后光斑才真的回到屏正中（速度选择器）。
+        function drawFieldRegion() {
+            if (state.b === 0) return;
+            const cross = state.u !== 0;
+            ctx.save();
+            // 荧光屏可以移到磁场区里面 —— 屏右边的场对粒子已经没有意义，画到屏为止
+            ctx.beginPath();
+            ctx.rect(0, 0, X_SCREEN, canvas.height);
+            ctx.clip();
+            ctx.setLineDash([8, 6]);
+            ctx.strokeStyle = 'rgba(120, 220, 255, 0.45)';
+            ctx.lineWidth = 1.6;
+            ctx.beginPath();
+            if (cross) {
+                ctx.roundRect(B_CROSS.x0, BFIELD.cy - B_CROSS.hHalf,
+                              B_CROSS.x1 - B_CROSS.x0, B_CROSS.hHalf * 2, 14);
+            } else {
+                ctx.arc(BFIELD.cx, BFIELD.cy, BFIELD.r, 0, Math.PI * 2);
+            }
+            ctx.stroke();
+            ctx.setLineDash([]);
+            // ⊗（向里）/ ⊙（向外）
+            ctx.strokeStyle = 'rgba(120, 220, 255, 0.32)';
+            ctx.fillStyle = 'rgba(120, 220, 255, 0.32)';
+            ctx.lineWidth = 1.3;
+            const into = state.b > 0;
+            const RR = 8;
+            const xL = cross ? B_CROSS.x0 + 26 : BFIELD.cx - BFIELD.r + 40;
+            const xR = cross ? B_CROSS.x1 - 26 : BFIELD.cx + BFIELD.r - 40;
+            const yT = cross ? BFIELD.cy - B_CROSS.hHalf + 34 : BFIELD.cy - BFIELD.r + 40;
+            const yB = cross ? BFIELD.cy + B_CROSS.hHalf - 34 : BFIELD.cy + BFIELD.r - 40;
+            for (let x = xL; x <= xR; x += 52) {
+                for (let y = yT; y <= yB; y += 52) {
+                    if (!cross && Math.hypot(x - BFIELD.cx, y - BFIELD.cy) > BFIELD.r - 26) continue;
+                    ctx.beginPath();
+                    ctx.arc(x, y, RR, 0, Math.PI * 2);
+                    ctx.stroke();
+                    if (into) {
+                        const d = RR * 0.62;
+                        ctx.beginPath();
+                        ctx.moveTo(x - d, y - d); ctx.lineTo(x + d, y + d);
+                        ctx.moveTo(x + d, y - d); ctx.lineTo(x - d, y + d);
+                        ctx.stroke();
+                    } else {
+                        ctx.beginPath();
+                        ctx.arc(x, y, 2.6, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+            }
+            ctx.restore();
+        }
+
+        function drawScreen() {
+            const h = SCREEN_PLATE.y1 - SCREEN_PLATE.y0;
+            ctx.save();
+            ctx.fillStyle = '#0d2b22';
+            ctx.beginPath();
+            ctx.roundRect(X_SCREEN, SCREEN_PLATE.y0, 18, h, 4);
+            ctx.fill();
+            ctx.fillStyle = 'rgba(70, 230, 160, 0.55)';
+            ctx.fillRect(X_SCREEN, SCREEN_PLATE.y0, 4, h);
+            ctx.strokeStyle = 'rgba(120, 255, 190, 0.4)';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.roundRect(X_SCREEN, SCREEN_PLATE.y0, 18, h, 4);
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        function drawGhost(traj) {
+            if (traj.ev.yScreen === null) return;
+            if (Math.abs(traj.ev.yScreen - Y_AXIS) < 14) return;
+            ctx.save();
+            ctx.setLineDash([9, 7]);
+            ctx.strokeStyle = 'rgba(150, 200, 255, 0.20)';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(PLATE.x0, Y_AXIS);
+            ctx.lineTo(X_SCREEN, Y_AXIS);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.strokeStyle = 'rgba(120, 255, 190, 0.40)';
+            ctx.beginPath();
+            ctx.arc(X_SCREEN - 2, Y_AXIS, 10, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        function drawStructuralScale() {
+            // 图上比例尺：一段 4 cm 的双箭头尺
+            const x0 = 700, y = 828, L = 160;
+            ctx.save();
+            ctx.strokeStyle = 'rgba(220, 230, 255, 0.55)';
+            ctx.fillStyle = 'rgba(220, 230, 255, 0.65)';
+            ctx.lineWidth = 1.4;
+            ctx.beginPath();
+            ctx.moveTo(x0, y); ctx.lineTo(x0 + L, y);
+            ctx.moveTo(x0, y - 6); ctx.lineTo(x0, y + 6);
+            ctx.moveTo(x0 + L, y - 6); ctx.lineTo(x0 + L, y + 6);
+            ctx.stroke();
+            ctx.font = '12px "Microsoft YaHei", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'bottom';
+            ctx.fillText('4.00 cm', x0 + L / 2, y - 9);
+            ctx.restore();
+        }
+
+        function strokePath(pts, stepS) {
+            ctx.beginPath();
+            ctx.moveTo(pts[0].x, pts[0].y);
+            const s = stepS || 1;
+            for (let i = s; i < pts.length; i += s) ctx.lineTo(pts[i].x, pts[i].y);
+            const last = pts[pts.length - 1];
+            ctx.lineTo(last.x, last.y);
+            ctx.stroke();
+        }
+
+        function drawTrajectory(traj) {
+            const col = traj.P.color;
+            ctx.save();
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            const hex = col;
+            const layers = [[11, hexToRgba(hex, 0.10)], [5, hexToRgba(hex, 0.34)], [2, 'rgba(240, 250, 255, 0.95)']];
+            const stepS = Math.max(1, Math.floor(traj.pts.length / 1400));
+            layers.forEach(function (L) {
+                ctx.lineWidth = L[0];
+                ctx.strokeStyle = L[1];
+                strokePath(traj.pts, stepS);
+            });
+            ctx.restore();
+        }
+
+        function hexToRgba(hex, a) {
+            const h = hex.replace('#', '');
+            const n = parseInt(h.length === 3 ? h.split('').map(function (c) { return c + c; }).join('') : h, 16);
+            return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')';
+        }
+
+        // 沿路径流动的一颗粒子（把"这是一束粒子流"画出来）
+        let dotPhase = 0;
+        function drawMovingDot(traj) {
+            const pts = traj.pts;
+            if (pts.length < 2) return;
+            const idx = Math.floor(dotPhase * (pts.length - 1));
+            const p = pts[idx];
+            ctx.save();
+            const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, 10);
+            g.addColorStop(0, 'rgba(255,255,255,0.98)');
+            g.addColorStop(0.45, hexToRgba(traj.P.color, 0.85));
+            g.addColorStop(1, hexToRgba(traj.P.color, 0));
+            ctx.fillStyle = g;
+            ctx.fillRect(p.x - 12, p.y - 12, 24, 24);
+            ctx.restore();
+        }
+
+        function drawSpot(traj) {
+            if (traj.ev.yScreen === null) return;
+            const ys = traj.ev.yScreen;
+            ctx.save();
+            const halo = ctx.createRadialGradient(X_SCREEN - 2, ys, 0, X_SCREEN - 2, ys, 52);
+            halo.addColorStop(0.00, 'rgba(120, 255, 190, 0.55)');
+            halo.addColorStop(0.35, 'rgba(90, 230, 170, 0.20)');
+            halo.addColorStop(1.00, 'rgba(90, 230, 170, 0)');
+            ctx.fillStyle = halo;
+            ctx.fillRect(X_SCREEN - 54, ys - 54, 108, 108);
+            const core = ctx.createRadialGradient(X_SCREEN - 2, ys, 0, X_SCREEN - 2, ys, 15);
+            core.addColorStop(0, 'rgba(255,255,255,1)');
+            core.addColorStop(0.45, 'rgba(160,255,210,0.95)');
+            core.addColorStop(1, 'rgba(80,220,160,0.15)');
+            ctx.fillStyle = core;
+            ctx.beginPath();
+            ctx.arc(X_SCREEN - 2, ys, 15, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
+
+        // 荧光屏上的偏移量读数：中轴参考点 → 光斑 的双箭头尺寸线 + 具体数值
+        //   这是"屏上看得见的那个数"，与右栏 ② 的 Y = y₁ + D·tanθ 同源。
+        function drawScreenOffset(traj) {
+            if (traj.ev.yScreen === null) return;
+            const ys = traj.ev.yScreen;
+            const dPx = Y_AXIS - ys;                 // > 0 表示向上偏
+            const Ym = Math.abs(dPx) / PX_PER_M;
+            const xb = X_SCREEN - 30;                // 尺寸线贴在屏左侧
+            const out = traj.ev.hit === 'screen-out';
+            const col = out ? 'rgba(255, 190, 120, 0.95)' : 'rgba(255, 236, 170, 0.95)';
+            ctx.save();
+            if (Math.abs(dPx) < 1.5) {
+                tag('屏上偏移 Y = 0 · 光斑正中', X_SCREEN - 26, Y_AXIS - 42,
+                    'rgba(150, 255, 205, 0.95)', 12, true);
+                ctx.restore();
+                return;
+            }
+            ctx.strokeStyle = col;
+            ctx.lineWidth = 1.6;
+            ctx.beginPath();
+            ctx.moveTo(xb, Y_AXIS); ctx.lineTo(xb, ys);
+            ctx.moveTo(xb - 8, Y_AXIS); ctx.lineTo(xb + 8, Y_AXIS);
+            ctx.moveTo(xb - 8, ys); ctx.lineTo(xb + 8, ys);
+            ctx.stroke();
+            if (Math.abs(dPx) > 46) {                // 太短就不画箭头，免得糊成一团
+                const s = dPx > 0 ? 1 : -1;
+                arrow(xb, ys + 14 * s, xb, ys, col, 1.6);
+                arrow(xb, Y_AXIS - 14 * s, xb, Y_AXIS, col, 1.6);
+            }
+            // 偏移小的时候标注贴着尺寸线中点会压到极板和光线，改放到光斑的外侧
+            const my = Math.abs(dPx) > 90
+                ? (Y_AXIS + ys) / 2
+                : ys + (dPx > 0 ? -34 : 34);
+            tag('Y = ' + len(Ym) + (dPx > 0 ? ' ↑ 向上' : ' ↓ 向下'), xb - 10, my, col, 13, true);
+            ctx.restore();
+        }
+
+        // 箭头：从 from 到 to，简单实心三角头
+        function arrow(x0, y0, x1, y1, color, w) {
+            const ang = Math.atan2(y1 - y0, x1 - x0);
+            const len = Math.hypot(x1 - x0, y1 - y0);
+            if (len < 4) return;
+            ctx.save();
+            ctx.strokeStyle = color;
+            ctx.fillStyle = color;
+            ctx.lineWidth = w || 1.6;
+            ctx.beginPath();
+            ctx.moveTo(x0, y0); ctx.lineTo(x1, y1);
+            ctx.stroke();
+            const hs = 7;
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x1 - hs * Math.cos(ang - 0.42), y1 - hs * Math.sin(ang - 0.42));
+            ctx.lineTo(x1 - hs * Math.cos(ang + 0.42), y1 - hs * Math.sin(ang + 0.42));
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+        }
+
+        // 出板处的速度分解 + 反向延长线
+        function drawHelpers(traj) {
+            const ep = traj.ev.exitPlate;
+            if (ep) {
+                if (state.showVec) {
+                    const S = 92;
+                    const k = ep.vy / ep.vx;            // 出射方向斜率 = v⊥/v∥
+                    arrow(ep.x, ep.y, ep.x + S, ep.y, 'rgba(255,190,120,0.85)', 1.8);
+                    arrow(ep.x, ep.y, ep.x, ep.y + k * S, 'rgba(255,140,140,0.85)', 1.8);
+                    arrow(ep.x, ep.y, ep.x + S, ep.y + k * S, 'rgba(255,255,255,0.9)', 2.2);
+                    ctx.save();
+                    ctx.font = '12px "Microsoft YaHei", sans-serif';
+                    ctx.fillStyle = 'rgba(255,205,150,0.95)';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('v∥', ep.x + S / 2, ep.y - 8);
+                    ctx.fillStyle = 'rgba(255,170,170,0.95)';
+                    ctx.fillText('v⊥', ep.x + (k > 0 ? 24 : -24), ep.y + k * S / 2);
+                    ctx.restore();
+                }
+                if (state.showBack && Math.abs(ep.y - Y_AXIS) > 10 && Math.abs(ep.vy) > 1) {
+                    // 沿出射方向的【反方向】回到中轴，落点应恰为极板中点
+                    const s = (ep.y - Y_AXIS) / ep.vy;
+                    const xHit = ep.x - s * ep.vx;
+                    ctx.save();
+                    ctx.setLineDash([7, 6]);
+                    ctx.strokeStyle = 'rgba(255, 220, 120, 0.75)';
+                    ctx.lineWidth = 1.6;
+                    ctx.beginPath();
+                    ctx.moveTo(ep.x, ep.y);
+                    ctx.lineTo(xHit, Y_AXIS);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                    const mid = (PLATE.x0 + PLATE.x1) / 2;
+                    ctx.strokeStyle = 'rgba(255, 235, 150, 0.9)';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(mid, Y_AXIS - 9);
+                    ctx.lineTo(mid, Y_AXIS + 9);
+                    ctx.stroke();
+                    ctx.font = 'bold 12px "Microsoft YaHei", sans-serif';
+                    ctx.fillStyle = 'rgba(255, 235, 150, 0.95)';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'top';
+                    ctx.fillText('反向延长过极板中点', (xHit + ep.x) / 2, Y_AXIS + 14);
+                    ctx.restore();
+                }
+            }
+            // 交叉场里轨迹不是圆弧（是"被两个场拉扯出来的"直线/曲线），
+            //   再画 R 的圆轨道与圆心 O 只会误导 —— 只在纯磁场工况画。
+            if (state.showCircle && traj.circle && !traj.crossMode && Math.abs(traj.circle.r) < 4000) {
+                const c = traj.circle;
+                ctx.save();
+                ctx.setLineDash([5, 7]);
+                ctx.strokeStyle = 'rgba(255, 170, 220, 0.55)';
+                ctx.lineWidth = 1.3;
+                ctx.beginPath();
+                ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                ctx.fillStyle = 'rgba(255, 170, 220, 0.95)';
+                ctx.beginPath();
+                ctx.arc(c.x, c.y, 4, 0, Math.PI * 2);
+                ctx.fill();
+                const e = traj.ev.enterB;
+                if (e) {
+                    ctx.strokeStyle = 'rgba(255, 170, 220, 0.7)';
+                    ctx.lineWidth = 1.2;
+                    ctx.beginPath();
+                    ctx.moveTo(c.x, c.y); ctx.lineTo(e.x, e.y);
+                    ctx.stroke();
+                }
+                ctx.font = '12px "Microsoft YaHei", sans-serif';
+                ctx.fillStyle = 'rgba(255, 190, 230, 0.95)';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'top';
+                ctx.fillText('O（圆心）  R = ' + len(traj.an.R), c.x, c.y + 6);
+                ctx.restore();
+            }
+        }
+
+        // alignRight = true 时，(x, y) 指的是胶囊【右边缘】的中点 —— 用来把标注贴在某条竖线左侧
+        function tag(text, x, y, color, size, alignRight) {
+            ctx.save();
+            size = size || 14;
+            ctx.font = 'bold ' + size + 'px "Microsoft YaHei", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            const w = ctx.measureText(text).width;
+            const cx = alignRight ? (x - w / 2 - 9) : x;
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.62)';
+            ctx.beginPath();
+            ctx.roundRect(cx - w / 2 - 9, y - size / 2 - 6, w + 18, size + 12, 7);
+            ctx.fill();
+            ctx.fillStyle = color;
+            ctx.fillText(text, cx, y);
+            ctx.restore();
+        }
+
+        function drawLabels(traj) {
+            const P = traj.P;
+            tag('阴极', 116, 96, 'rgba(190, 210, 255, 0.95)');
+            tag('加速阳极 U₀ = ' + state.u0 + ' V', 200, 96, 'rgba(255, 225, 170, 0.95)', 13);
+            // 右对齐到屏左侧：屏拉近到 2 cm 时这两个标注也不会压到屏柱上
+            tag('荧光屏', X_SCREEN - 14, 96, 'rgba(150, 255, 205, 0.95)', 13, true);
+            tag('D = ' + trim(state.dCm, 1) + ' cm', X_SCREEN - 14, 124, 'rgba(150, 255, 205, 0.82)', 12, true);
+            if (state.u !== 0) {
+                tag('L = 7.50 cm   d = 2.00 cm   U = ' + state.u + ' V', 510, 130, 'rgba(255, 215, 175, 0.95)', 13);
+            } else {
+                tag('极板间未加电场', 510, 130, 'rgba(200, 205, 215, 0.85)', 13);
+            }
+            if (state.b !== 0) {
+                const dir = state.b > 0 ? '⊗ 向里' : '⊙ 向外';
+                const bs = trim(state.b, 3) + ' mT ';
+                if (state.u !== 0) {
+                    tag('正交场（速度选择器）：磁场区与极板同区间　B = ' + bs + dir, 510, 296,
+                        'rgba(255, 200, 150, 0.95)', 13);
+                } else {
+                    tag('B = ' + bs + dir + '（有界磁场区 R = 4.00 cm）', 880, 252,
+                        'rgba(180, 235, 255, 0.95)', 13);
+                }
+            } else {
+                tag('未加磁场', 880, 252, 'rgba(200, 205, 215, 0.8)', 13);
+            }
+            tag(P.label + '：v = ' + sci(traj.an.v, 3) + ' m/s', 560, 828, 'rgba(210, 225, 255, 0.95)', 13);
+            if (traj.ev.hit === 'plate') {
+                tag('⚠ 打在极板上了：偏转量超过板间距的一半', 510, 690, 'rgba(255, 150, 150, 0.95)', 14);
+            } else if (traj.ev.hit === 'screen-out') {
+                tag('⚠ 偏转太大，粒子已飞出荧光屏范围', 960, 130, 'rgba(255, 190, 120, 0.95)', 14);
+            }
+        }
+
+        // ══ 面板刷新 ═══════════════════════════════════════════════
+        const READING = {
+            straight: {
+                head: '只加加速电压：匀速直线',
+                body: '粒子被 U₀ 加速后沿中轴<strong>匀速直线</strong>飞行，光斑落在正中。' +
+                      '此时它的速率由 <strong>½mv² = qU₀</strong> 决定 —— 面板 ① 里可以直接读出来。'
+            },
+            electric: {
+                head: '只加偏转电压：类平抛运动',
+                body: '粒子在极板间做的是<strong>类平抛</strong>：沿板方向<strong>匀速</strong>穿过，垂直板方向被电场<strong>匀加速</strong>拉开。' +
+                      '出板后沿切线做<strong>匀速直线</strong>，最后打在屏上偏移 <strong>Y = y₁ + D·tanθ</strong>。' +
+                      '黄金结论：出射速度<strong>反向延长必过极板中点</strong>。'
+            },
+            magnetic: {
+                head: '只加磁场：匀速圆周运动',
+                body: '洛伦兹力始终<strong>垂直于速度</strong>，只改变方向不做功 → 速率不变，做<strong>匀速圆周运动</strong>。' +
+                      '<strong>R = mv/(qB)</strong>、<strong>T = 2πm/(qB)</strong>。' +
+                      '注意：<strong>T 与速率无关</strong>，这正是回旋加速器能工作的基础。'
+            },
+            crossed: {
+                head: '电场 + 磁场（正交）：速度选择器',
+                body: '两个场同时作用，受力方向相反。调到 <strong>qE = qvB</strong>（即 <strong>v = E/B</strong>）时会发现：粒子<strong>不偏不倚走直线</strong>，' +
+                      '出板后再无场力，光斑落在屏<strong>正中</strong>——这就是速度选择器，只有速率恰好等于 <code>E/B</code> 的粒子能直着穿过去。' +
+                      '再结合 ½mv² = qU₀，就能反推出 <strong>q/m = E²/(2U₀B²)</strong> —— 这正是汤姆逊 1897 年测电子荷质比的思路。'
+            }
+        };
+
+        function setText(id, html) { document.getElementById(id).innerHTML = html; }
+        function setNum(id, text, cls) {
+            const el = document.getElementById(id);
+            el.className = 'dval' + (cls ? ' ' + cls : '');
+            el.innerHTML = text;
+        }
+
+        function updatePanels(traj) {
+            document.getElementById('reading').setAttribute('data-mode', scenario());
+            const r = READING[scenario()];
+            setText('readingHead', r.head);
+            setText('readingBody', r.body);
+
+            const a = traj.an, n = traj.num, P = traj.P;
+            setNum('d_v', sci(a.v, 3) + ' m/s');
+            setNum('d_t0', time(traj.tAccel));
+            setNum('d_D', trim(state.dCm, 1) + ' cm<span class="alt">图上 ' + trim(state.dCm * CM_PX, 0) + ' px</span>');
+            setText('d_Yfrm', 'Y = y₁ + D·tanθ，D = ' + trim(state.dCm, 1) + ' cm');
+
+            if (state.u !== 0) {
+                setNum('d_E', sci(Math.abs(a.E), 3) + ' V/m');
+                setNum('d_a', sci(Math.abs(a.aE), 3) + ' m/s²');
+                setNum('d_t1', time(a.t1));
+                setNum('d_y1', len(a.y1) + '<span class="alt">仿真 ' + (n.y1 === null ? '—' : len(n.y1)) + '</span>');
+                setNum('d_tan', trim(a.tan, 4) + '<span class="alt">仿真 ' + (n.tan === null ? '—' : trim(n.tan, 4)) + '　θ = ' + trim(Math.atan(a.tan) * 180 / Math.PI, 2) + '°</span>');
+                if (traj.ev.hit === 'plate') {
+                    setNum('d_Y', '打在极板上', 'warn');
+                } else {
+                    setNum('d_Y', (n.Y === null ? '—' : len(n.Y)) + '<span class="alt">解析 ' + len(a.Y) + '</span>');
+                }
+            } else {
+                setNum('d_E', '未加电场');
+                setNum('d_a', '未加电场');
+                setNum('d_t1', time(a.t1));
+                setNum('d_y1', '未加电场');
+                setNum('d_tan', '未加电场');
+                setNum('d_Y', (n.Y === null ? '—' : len(n.Y)));
+            }
+
+            if (state.b !== 0) {
+                if (a.R > 0.12) {
+                    setNum('d_R', len(a.R) + '<span class="alt">远大于场区 4 cm → 几乎不偏转</span>');
+                } else {
+                    setNum('d_R', len(a.R) + '<span class="alt">' + trim(a.R * 100, 2) + ' cm（图上 ' + trim(a.R * PX_PER_M, 0) + ' px）</span>');
+                }
+                setNum('d_T', time(a.T));
+                setNum('d_phi', (n.phi === null ? '在区内未完成完整偏转' : trim(n.phi, 2) + '°') +
+                    (traj.crossMode ? '<span class="alt">只算 B、不含 E 的参考值</span>' : ''));
+                setNum('d_beta', (n.phi === null ? '—' : trim(n.phi, 2) + '°') +
+                    (traj.crossMode ? '<span class="alt">正交场下粒子不转弯</span>' : '<span class="alt">几何证明：偏向角 = 圆心角</span>'));
+            } else {
+                setNum('d_R', '未加磁场');
+                setNum('d_T', '未加磁场');
+                setNum('d_phi', '未加磁场');
+                setNum('d_beta', '未加磁场');
+            }
+
+            // ④ 正交场 / 汤姆逊
+            const Eabs = Math.abs(a.E);
+            const Babs = Math.abs(traj.Bin);
+            if (state.u !== 0 && state.b !== 0 && Babs > 0) {
+                const vSel = Eabs / Babs;
+                const qm = vSel * vSel / (2 * traj.U0);
+                const qmT = Math.abs(P.q) / P.m;
+                const err = Math.abs(qm - qmT) / qmT * 100;
+                setNum('d_sel', sci(vSel, 3) + ' m/s<span class="alt">粒子实际 v = ' + sci(a.v, 3) + ' m/s</span>');
+                setNum('d_qm', sci(qm, 3) + ' C/kg', err > 5 ? 'warn' : '');
+                setNum('d_qmt', sci(qmT, 3) + ' C/kg');
+                const ok = err < 3;
+                setText('d_qmnote', ok
+                    ? '两场已接近抵消（误差 ' + trim(err, 2) + '%）。想要更准，点「汤姆逊配平」让程序自动扫出正好抵消的 B。'
+                    : '当前两场未配平，反推出的 q/m 偏差 ' + trim(err, 2) + '%。点「汤姆逊配平」自动找平衡值。');
+            } else {
+                setNum('d_sel', state.u === 0 ? '需先加偏转电压' : '需再加磁场');
+                setNum('d_qm', '—');
+                setNum('d_qmt', sci(Math.abs(P.q) / P.m, 3) + ' C/kg');
+                setText('d_qmnote', '把 U 调到非零、再点「汤姆逊配平」，让电场偏转与磁场偏转正好抵消，即可反推出 q/m。');
+            }
+        }
+
+        // ══ 交互 ═══════════════════════════════════════════════════
+        function refresh() {
+            updateScreenX();          // 屏距 D 一变，X_SCREEN / AFTER_M 必须先跟着变
+            cache = computeTrajectory();
+            updatePanels(cache);
+        }
+
+        // ══ 参数控件：滑杆（粗调） ⇄ 数字框（精调） ══════════════════
+        //   滑杆按各自 step 走档位；右侧数字框可手填任意值 —— 比 step 更细、
+        //   也可以比滑杆量程更大（此时滑杆量程自动扩展来容纳它，绝不静默夹掉）。
+        //   只有 D 是硬限制：屏柱必须整个留在画布里 → 夹在 [0.5, 12.8] cm。
+        const PARAMS = [
+            { key: 'u0',  num: 'u0n', rng: 'u0',  dec: 0, min: 1,     max: 20000 },
+            { key: 'u',   num: 'un',  rng: 'u',   dec: 0, min: -50000, max: 50000 },
+            { key: 'b',   num: 'bn',  rng: 'b',   dec: 3, min: null,   max: null },  // 上限随粒子，见 bLimit()
+            { key: 'dCm', num: 'dn',  rng: 'dCm', dec: 2, min: SCREEN_D.minHard, max: SCREEN_D.maxHard }
+        ];
+        // B 的手填上限 = 基准量程 ×5：再大也只会得到看不见的小圈，还会把积分器拖死
+        function bLimit() { return B_RANGE[state.pt].max * 5; }
+        function clampParam(p, v) {
+            if (p.key === 'b') { const lim = bLimit(); return Math.max(-lim, Math.min(lim, v)); }
+            if (p.min !== null && v < p.min) v = p.min;
+            if (p.max !== null && v > p.max) v = p.max;
+            return v;
+        }
+        function fmtNum(v, dec) { return Math.abs(v) < 1e-9 ? '0' : trim(v, dec); }
+
+        const CTL = {};
+        PARAMS.forEach(function (p) {
+            const R = document.getElementById(p.rng), N = document.getElementById(p.num);
+            CTL[p.key] = { p: p, R: R, N: N, base: { min: parseFloat(R.min), max: parseFloat(R.max) } };
+            R.addEventListener('input', function () {
+                state[p.key] = parseFloat(R.value);        // 滑杆给出的本来就是档位值，直接采纳
+                syncControls();
+                refresh();
+            });
+            N.addEventListener('input', function () {
+                const raw = N.value;
+                if (raw === '' || !isFinite(parseFloat(raw))) return;   // "-" / "" 等输入中途态先不动
+                const v = parseFloat(raw);
+                const c = clampParam(p, v);
+                state[p.key] = c;
+                // 被夹过（填了超限值）就立刻写回，让用户当场看到被纠正成什么
+                syncControls(c !== v ? null : N);
+                refresh();
+            });
+            N.addEventListener('blur', function () { syncControls(); });
+            N.addEventListener('keydown', function (e) { if (e.key === 'Enter') N.blur(); });
+        });
+
+        // 把 state 回写到控件（滑杆 + 数字框；预设 / 配平 / 重置 / 换粒子都走这里）
+        //   skipEl：正在输入的框不要被覆盖（会打断光标）；滑杆量程不足则扩展
+        function syncControls(skipEl) {
+            PARAMS.forEach(function (p) {
+                const c = CTL[p.key], R = c.R, N = c.N, v = state[p.key];
+                const lo = Math.min(c.base.min, v), hi = Math.max(c.base.max, v);
+                if (parseFloat(R.min) !== lo) R.min = lo;
+                if (parseFloat(R.max) !== hi) R.max = hi;
+                R.value = v;
+                if (N !== skipEl && document.activeElement !== N) N.value = fmtNum(v, p.dec);
+            });
+        }
+
+        function applyParticleRange() {
+            const rng = B_RANGE[state.pt];                 // 量程随粒子换：单一量程服务不了电子与质子
+            const c = CTL.b;
+            c.base.min = -rng.max; c.base.max = rng.max;
+            c.R.step = rng.step;
+            const lim = bLimit();
+            if (Math.abs(state.b) > lim) state.b = state.b > 0 ? lim : -lim;
+            syncControls();
+        }
+
+        document.querySelectorAll('input[name="pt"]').forEach(function (radio) {
+            radio.addEventListener('change', function () {
+                state.pt = this.value;
+                document.getElementById('customRow').hidden = (state.pt !== 'custom');
+                applyParticleRange();
+                refresh();
+            });
+        });
+
+        ['qE', 'mU'].forEach(function (id) {
+            document.getElementById(id).addEventListener('input', function () {
+                const v = parseFloat(this.value);
+                if (!isFinite(v)) return;
+                if (id === 'qE') state.qE = v; else state.mU = v;
+                if (state.pt === 'custom') refresh();
+            });
+        });
+
+        ['showVec', 'showBack', 'showCircle'].forEach(function (id) {
+            document.getElementById(id).addEventListener('change', function () {
+                state[id] = this.checked;
+            });
+        });
+
+        // 选一个 B，使轨道半径 ≈ 8 cm（= 2× 场区半径）—— 圆弧明显、又不会一出场区就飞出画面
+        function presetMagB() {
+            const P = activeParticle();
+            const v = Math.sqrt(2 * Math.abs(P.q) * state.u0 / P.m);
+            const b = P.m * v / (Math.abs(P.q) * 0.08) * 1000;   // mT
+            return Math.min(B_RANGE[state.pt].max, Math.round(b * 10) / 10);
+        }
+
+        document.getElementById('btnPlay').addEventListener('click', function () {
+            state.playing = !state.playing;
+            this.textContent = state.playing ? '⏸ 暂停' : '▶ 继续';
+        });
+        document.getElementById('btnEmit').addEventListener('click', function () {
+            dotPhase = 0;
+            state.playing = true;
+            document.getElementById('btnPlay').textContent = '⏸ 暂停';
+        });
+        document.getElementById('btnReset').addEventListener('click', function () {
+            state.pt = 'electron';
+            document.querySelectorAll('input[name="pt"]').forEach(function (r) { r.checked = (r.value === 'electron'); });
+            document.getElementById('customRow').hidden = true;
+            state.u0 = 2000; state.u = 200; state.b = 0; state.dCm = SCREEN_D.def;
+            dotPhase = 0;
+            applyParticleRange();
+            syncControls();
+            refresh();
+        });
+        document.getElementById('btnPreElec').addEventListener('click', function () {
+            state.u = 200; state.b = 0;
+            dotPhase = 0;
+            syncControls();
+            refresh();
+        });
+        document.getElementById('btnPreMag').addEventListener('click', function () {
+            state.u = 0; state.b = presetMagB();
+            dotPhase = 0;
+            syncControls();
+            refresh();
+        });
+        document.getElementById('btnBalance').addEventListener('click', function () {
+            if (state.u === 0) {
+                alert('请先把偏转电压 U 调到非零值，再加磁场去抵消它。');
+                return;
+            }
+            const b = solveBalance();
+            if (b === null) {
+                alert('在当前 B 量程内找不到抵消点。可以减小偏转电压 U，或增大加速电压 U₀ 后再试。');
+                return;
+            }
+            // 不量化到滑块 step：0.01 mT 级的对齐误差就足以把抵消点冲掉。
+            state.b = b;
+            syncControls();
+            refresh();
+        });
+
+        // ══ 主循环 ═══════════════════════════════════════════════════
+        // 轨迹只在参数变化时重算；动画只负责让亮点沿轨迹流动。
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawGrid();
+            drawTube();
+            drawFieldRegion();     // 场画在极板下层，避免 ⊗ 压住极板
+            drawPlates();
+            const traj = cache || computeTrajectory();
+            drawStructuralScale();
+            drawGhost(traj);
+            drawScreen();
+            drawCathode();
+            drawAnode();
+            drawTrajectory(traj);
+            drawHelpers(traj);
+            drawMovingDot(traj);
+            drawSpot(traj);
+            drawScreenOffset(traj);
+            drawLabels(traj);
+            if (state.playing) dotPhase = (dotPhase + 0.0045) % 1;
+            requestAnimationFrame(animate);
+        }
+
+        applyParticleRange();
+        refresh();
+        animate();
+    </script>
+</body>
+</html>

@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>阴极射线实验模拟</title>
+    <style>
+        /* ── 页面级布局变量 ─────────────────────────────────────────────
+           与 α 散射页同一套口径：画布高度取三约束最小值，只缩 CSS 显示尺寸，
+           canvas 内部分辨率恒为 1200×900，物理与命中判定零改动。 */
+        :root {
+            --side-w: 470px;
+            --canvas-h: min(
+                820px,
+                calc(100vh - 150px),
+                calc((100vw - var(--side-w) - 70px) * 0.75)
+            );
+        }
+        body {
+            font-family: "Microsoft YaHei", sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 14px 20px 20px;
+            min-height: 100vh;
+            margin: 0;
+            box-sizing: border-box;
+        }
+        h1 {
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            margin: 0;
+            font-size: 26px;
+        }
+        .subtitle {
+            color: rgba(255,255,255,0.9);
+            font-size: 13px;
+            margin: 6px 0 12px;
+        }
+        .stage {
+            display: flex;
+            gap: 22px;
+            align-items: flex-start;
+            justify-content: center;
+            width: 100%;
+            max-width: 1880px;
+        }
+        #canvas {
+            border: 3px solid #fff;
+            background: #000;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            height: var(--canvas-h);
+            width: auto;
+            aspect-ratio: 4 / 3;
+            flex: 0 0 auto;
+        }
+        .side {
+            flex: 0 0 var(--side-w);
+            width: var(--side-w);
+            height: var(--canvas-h);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            min-width: 0;
+        }
+        .panel {
+            background: rgba(255,255,255,0.95);
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        .controls {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+            padding: 14px 16px;
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+        label {
+            margin-bottom: 6px;
+            font-weight: bold;
+            font-size: 13px;
+            color: #333;
+            white-space: nowrap;
+        }
+        input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+        }
+        /* 三选一的偏转方式：radio 伪装成分段按钮 */
+        .mode-options {
+            display: flex;
+            gap: 6px;
+        }
+        .mode-option {
+            cursor: pointer;
+            margin-bottom: 0;
+            flex: 1 1 0;
+        }
+        .mode-option input[type="radio"] {
+            display: none;
+        }
+        .mode-option span {
+            display: block;
+            padding: 7px 6px;
+            border: 2px solid #667eea;
+            border-radius: 16px;
+            color: #667eea;
+            font-weight: bold;
+            font-size: 13px;
+            text-align: center;
+            transition: all 0.3s;
+            user-select: none;
+        }
+        .mode-option:hover span {
+            background: rgba(102, 126, 234, 0.1);
+        }
+        .mode-option input[type="radio"]:checked + span {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 3px 8px rgba(102, 126, 234, 0.4);
+        }
+        button {
+            padding: 10px 14px;
+            font-size: 15px;
+            cursor: pointer;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 22px;
+            font-weight: bold;
+            font-family: inherit;
+            white-space: nowrap;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            transition: all 0.3s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(0,0,0,0.3);
+        }
+        button:active {
+            transform: translateY(0);
+        }
+        /* ── 现象解读卡：左边框颜色随偏转方式变化 ─────────────────────── */
+        .reading {
+            padding: 12px 16px 14px;
+            border-left: 5px solid #b4b2a9;
+            transition: border-color 0.35s ease;
+        }
+        .reading[data-mode="electric"] { border-left-color: #667eea; }
+        .reading[data-mode="magnetic"] { border-left-color: #16a085; }
+        .reading-head {
+            font-size: 15px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 7px;
+        }
+        .reading-body {
+            font-size: 13px;
+            color: #444;
+            line-height: 1.66;
+        }
+        .reading-body strong { color: #764ba2; }
+        .reading[data-mode="electric"] .reading-body strong { color: #4a5ec7; }
+        .reading[data-mode="magnetic"] .reading-body strong { color: #0f7a63; }
+        .reading-note {
+            margin-top: 9px;
+            padding-top: 8px;
+            border-top: 1px dashed rgba(0,0,0,0.12);
+            font-size: 12px;
+            color: #777;
+            line-height: 1.6;
+        }
+        .reading-note:empty { display: none; }
+        /* ── 实验说明：默认折叠；展开后在本栏内部滚动，页面高度不变 ──── */
+        .legend {
+            flex: 0 0 auto;
+            display: flex;
+            flex-direction: column;
+            font-size: 13px;
+            color: #333;
+            overflow: hidden;
+        }
+        .legend:not([open]) {
+            margin-top: auto;
+        }
+        .legend[open] {
+            flex: 1 1 auto;
+            min-height: 0;
+        }
+        .legend > summary {
+            cursor: pointer;
+            padding: 12px 16px;
+            font-weight: bold;
+            font-size: 14px;
+            list-style: none;
+            display: flex;
+            align-items: center;
+            user-select: none;
+        }
+        .legend > summary::-webkit-details-marker {
+            display: none;
+        }
+        .legend > summary::after {
+            content: "展开 ▾";
+            margin-left: auto;
+            font-size: 12px;
+            font-weight: normal;
+            color: #8e7cc3;
+        }
+        .legend[open] > summary::after {
+            content: "收起 ▴";
+        }
+        .legend[open] > summary {
+            border-bottom: 1px solid rgba(142,124,195,0.25);
+        }
+        .legend-body {
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow-y: auto;
+            padding: 4px 16px 14px;
+            line-height: 1.6;
+        }
+        .legend ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+        .legend li {
+            position: relative;
+            padding-left: 18px;
+            margin: 8px 0;
+        }
+        .legend li::before {
+            content: "";
+            position: absolute;
+            left: 3px;
+            top: 8px;
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: #8e7cc3;
+        }
+        /* ── 返回探索史（固定定位，不占布局高度，不影响一屏放得下） ──── */
+        .home-link {
+            position: fixed;
+            left: 20px;
+            top: 16px;
+            padding: 7px 16px;
+            background: rgba(255,255,255,0.82);
+            color: #555;
+            font-size: 13px;
+            border-radius: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.12);
+            text-decoration: none;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            letter-spacing: 0.3px;
+            z-index: 1000;
+            transition: background 0.3s, color 0.3s, transform 0.3s;
+        }
+        .home-link:hover {
+            background: rgba(255,255,255,0.96);
+            color: #333;
+            transform: translateY(-1px);
+        }
+        /* ── 页面署名（右下角胶囊标签，悬停展开完整署名） ─────────────── */
+        .signature {
+            position: fixed;
+            right: 20px;
+            bottom: 15px;
+            padding: 8px 18px;
+            background: rgba(255, 255, 255, 0.82);
+            color: #555;
+            font-size: 13px;
+            border-radius: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.12);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            user-select: none;
+            z-index: 1000;
+            cursor: pointer;
+            letter-spacing: 0.3px;
+            display: flex;
+            align-items: center;
+            white-space: nowrap;
+            transition: background 0.35s ease, color 0.35s ease,
+                        box-shadow 0.35s ease, transform 0.35s ease;
+        }
+        .signature .author-short {
+            display: inline-block;
+            max-width: 80px;
+            overflow: hidden;
+            transition: max-width 0.35s ease, opacity 0.3s ease;
+        }
+        .signature .author-full {
+            display: inline-block;
+            max-width: 0;
+            opacity: 0;
+            margin-left: 0;
+            overflow: hidden;
+            transition: max-width 0.35s ease, opacity 0.35s ease 0.05s,
+                        margin-left 0.35s ease;
+        }
+        .signature:hover {
+            background: rgba(255, 255, 255, 0.95);
+            color: #333;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.2);
+            transform: translateY(-1px);
+        }
+        .signature:hover .author-full {
+            max-width: 260px;
+            opacity: 1;
+            margin-left: 10px;
+        }
+        /* ── 窄屏回退：放不下两栏时改为上下堆叠 ─────────────────────── */
+        @media (max-width: 1080px) {
+            :root {
+                --canvas-h: min(660px, calc(100vh - 150px));
+            }
+            .stage {
+                flex-direction: column;
+                align-items: center;
+            }
+            .side {
+                width: 100%;
+                flex: 0 0 auto;
+                height: auto;
+            }
+            .legend-body {
+                max-height: 340px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <a class="home-link" href="index.html">← 原子探索史</a>
+
+    <h1>⚡ 阴极射线实验模拟</h1>
+    <div class="subtitle">汤姆逊发现电子 · 原子能不能再分？</div>
+
+    <div class="stage">
+        <canvas id="canvas" width="1200" height="900"></canvas>
+
+        <div class="side">
+            <div class="panel controls">
+                <div class="control-group">
+                    <label>偏转方式（每次只加一种，做对照）</label>
+                    <div class="mode-options">
+                        <label class="mode-option">
+                            <input type="radio" name="fieldMode" value="none" checked>
+                            <span>不加场</span>
+                        </label>
+                        <label class="mode-option">
+                            <input type="radio" name="fieldMode" value="electric">
+                            <span>加电场</span>
+                        </label>
+                        <label class="mode-option">
+                            <input type="radio" name="fieldMode" value="magnetic">
+                            <span>加磁场</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label>场强: <span id="strengthValue" style="color: #667eea;">6</span></label>
+                    <input type="range" id="strength" min="1" max="10" step="1" value="6">
+                </div>
+                <div class="control-group">
+                    <button onclick="resetTube()">🔄 重置</button>
+                </div>
+            </div>
+
+            <div class="panel reading" id="reading" data-mode="none">
+                <div class="reading-head" id="readingHead">观察到的现象</div>
+                <div class="reading-body" id="readingBody"></div>
+                <div class="reading-note" id="readingNote"></div>
+            </div>
+
+            <details class="panel legend">
+                <summary>💡 <strong>实验说明</strong></summary>
+                <div class="legend-body">
+                    <ul>
+                        <li><strong>装置怎么摆：</strong>左侧<strong>阴极</strong>通电后发射一束看不见的「阴极射线」，右侧<strong>荧光屏</strong>把射线的落点变成可见的<strong>光斑</strong>。管子中间两块极板之间可以加<strong>电场</strong>，同一区域也可以换成<strong>磁场</strong>（每次只加一种，才是对照实验）。</li>
+                        <li><strong>为什么看光斑：</strong>管内接近真空，阴极射线本身肉眼看不见；它打在荧光屏上才会发光。<strong>所以"光斑在哪里"，就是"射线走到哪里"。</strong></li>
+                        <li><strong>怎么判断带不带电：</strong>带电的粒子在电场里会受力的作用 —— 被<strong>正极吸引</strong>、被负极排斥。所以只要看光斑往哪边移，就能判断射线带什么电。</li>
+                        <li><strong>完整推理链：</strong>射线在电场中<strong>发生偏转</strong> → 说明它<strong>带电</strong> → 光斑偏向<strong>正极</strong> → 说明它带<strong>负电</strong> → 它是一束<strong>带负电的粒子流</strong> → 汤姆逊（1897）把它命名为<strong>电子</strong> → <strong>原子里还有比原子更小的粒子，原子不是不可再分的</strong>。</li>
+                        <li><strong>场强管什么：</strong>拉得越大，偏转越明显（电场中偏转量随场强线性增大）。真实的汤姆逊实验还通过改变场强<strong>测出了电子的荷质比</strong>——这一步涉及定量计算，属于高中内容，初中只需走到"带负电的粒子流"这一层。</li>
+                        <li><strong>学生常问：为什么加磁场也会偏，方向还相反？</strong>因为磁场对运动电荷的力，方向与电场的力不同（高中会学"左手定则"）。初中只需要知道：<strong>两种完全不同的场，给出了方向相反的偏转，结论却一致</strong>——这本身就是很有力的互相印证。</li>
+                        <li><strong>推荐试试：</strong>先让学生猜"光斑会往哪边移"，再亲手切换「不加场 → 加电场 → 加磁场」。猜错比猜对更有价值——第 3 张图里光斑反向移动，正是引起认知冲突的时刻。</li>
+                    </ul>
+                </div>
+            </details>
+        </div>
+    </div>
+
+    <div class="signature" title="悬停查看作者信息">
+        <span class="author-short">作者</span><span class="author-full">张曾继明 · 西南大学 · © 2026</span>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        // ══ 几何口径（改动这里必须同步探针里的常量断言）══════════════
+        const X_CATHODE = 140;      // 射线起点（阴极表面）
+        const Y_AXIS    = 450;      // 管中轴 —— 不加场时光斑落在这里
+        const X_FLD_IN  = 560;      // 偏转区入口
+        const X_FLD_OUT = 940;      // 偏转区出口
+        const X_SCREEN  = 1104;     // 荧光屏受击面
+        const FLD_LEN   = X_FLD_OUT - X_FLD_IN;      // 380
+        const AFTER_LEN = X_SCREEN - X_FLD_OUT;      // 164
+        const TUBE = { x0: 90, y0: 120, x1: 1136, y1: 790, r: 70 };
+        // 荧光屏板的竖直范围（光斑必须落在这条范围内，否则会"打到屏外"）
+        const SCREEN_PLATE = { y0: 170, y1: 740 };
+
+        // 偏转量上限（像素）：滑块拉满时，光斑离中轴的距离。
+        //   荧光屏竖直范围 170~740，中轴 450 → 上下各留 280 余量，230 用不满、安全。
+        const ELEC_MAX = 230;
+        const MAG_MAX_RAD = 34 * Math.PI / 180;   // 磁场里电子转过的最大圆心角
+
+        // 电场极板几何（只在"加电场"时绘制并生效）
+        const PLATE = { x0: 560, x1: 940, h: 14, topY: 288, botY: 598 };
+
+        // ══ 状态 ════════════════════════════════════════════════════
+        let mode = 'none';          // 'none' | 'electric' | 'magnetic'
+        let strength = 6;           // 1~10（滑块）
+        let deflect = 0;            // 当前偏转量 0~1（逐帧逼近目标值 → 平滑动画）
+        let retracting = false;     // 换场时先把射线拉直，再弯向新方向（避免形状突跳）
+        const EASE = 0.12;          // 每帧逼近系数
+
+        // 屏幕上"不偏转时的落点"——只在真的偏转时才画虚影，否则会和光斑重叠
+        const GHOST_MIN = 12;
+
+        // 偏转量随场强的映射：滑块 1~10 → 0.35~1.0。
+        //   不从 0 起：滑块最左端若对应"几乎不偏"，老师拉到最小会以为程序坏了。
+        //   留 35% 底量 → 1 档也有 80px 位移，投影上看得清。
+        const DEFLECT_FLOOR = 0.35;
+        function deflectTarget() {
+            if (retracting || mode === 'none') return 0;
+            return DEFLECT_FLOOR + (1 - DEFLECT_FLOOR) * (strength - 1) / 9;
+        }
+
+        // 沿路径流动的电子（纯视觉：让射线看起来是"持续的粒子流"）
+        const DOT_COUNT = 16;
+        let dotPhase = 0;
+
+        // ══ 轨迹计算 ═════════════════════════════════════════════════
+        // 返回 { pts, yScreen }。pts 是从阴极到屏的多段折线（40 段足够平滑）。
+        // 【电场】极板间受恒定横向力 → 抛物线；出极板后沿切线匀速直线。
+        //   电子带负电 → 被【上方的正极板】吸引 → 向上偏（画布 y 减小）。
+        //   S = A + (2A/FLD_LEN)·AFTER_LEN  →  反解出抛物线在出口处的偏移 A。
+        // 【磁场】洛伦兹力垂直于速度 → 匀速圆周；出磁场后沿切线直线。
+        //   B 垂直纸面向里、电子向右运动 → 受力向下（画布 y 增大）→ 与电场反向。
+        //   转过圆心角 θ 时 R = FLD_LEN / sinθ。
+        function buildRay() {
+            const pts = [{x: X_CATHODE, y: Y_AXIS}, {x: X_FLD_IN, y: Y_AXIS}];
+            if (mode === 'none' || deflect <= 1e-4) {
+                pts.push({x: X_SCREEN, y: Y_AXIS});
+                return { pts: pts, yScreen: Y_AXIS };
+            }
+            const N = 40;
+            if (mode === 'electric') {
+                const A = -(ELEC_MAX * deflect) / (1 + 2 * AFTER_LEN / FLD_LEN);
+                for (let i = 1; i <= N; i++) {
+                    const u = i / N;
+                    pts.push({ x: X_FLD_IN + FLD_LEN * u, y: Y_AXIS + A * u * u });
+                }
+                const yScreen = Y_AXIS + A + (2 * A / FLD_LEN) * AFTER_LEN;
+                pts.push({ x: X_SCREEN, y: yScreen });
+                return { pts: pts, yScreen: yScreen };
+            }
+            // magnetic：θ 越大 R 越小、弯得越厉害
+            const th = MAG_MAX_RAD * deflect;
+            const R = FLD_LEN / Math.sin(th);
+            for (let i = 1; i <= N; i++) {
+                const ph = th * i / N;
+                pts.push({ x: X_FLD_IN + R * Math.sin(ph), y: Y_AXIS + R * (1 - Math.cos(ph)) });
+            }
+            const yScreen = Y_AXIS + R * (1 - Math.cos(th)) + Math.tan(th) * AFTER_LEN;
+            pts.push({ x: X_SCREEN, y: yScreen });
+            return { pts: pts, yScreen: yScreen };
+        }
+
+        // 折线参数化：按弧长取点（给流动电子用）
+        function buildSampler(pts) {
+            const cum = [0];
+            let total = 0;
+            for (let i = 1; i < pts.length; i++) {
+                total += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
+                cum.push(total);
+            }
+            return function (t) {
+                const target = t * total;
+                let i = 1;
+                while (i < cum.length - 1 && cum[i] < target) i++;
+                const seg = cum[i] - cum[i - 1];
+                const f = seg > 1e-9 ? (target - cum[i - 1]) / seg : 0;
+                return {
+                    x: pts[i - 1].x + (pts[i].x - pts[i - 1].x) * f,
+                    y: pts[i - 1].y + (pts[i].y - pts[i - 1].y) * f
+                };
+            };
+        }
+
+        // ══ 绘制 ═════════════════════════════════════════════════════
+        function drawGrid() {
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+            ctx.lineWidth = 1;
+            for (let x = 0; x < canvas.width; x += 50) {
+                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+            }
+            for (let y = 0; y < canvas.height; y += 50) {
+                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+            }
+        }
+
+        function drawTube() {
+            // 玻璃管：淡淡的边框 + 极浅的内填充（管内接近真空 → 几乎是黑的）
+            ctx.save();
+            ctx.beginPath();
+            ctx.roundRect(TUBE.x0, TUBE.y0, TUBE.x1 - TUBE.x0, TUBE.y1 - TUBE.y0, TUBE.r);
+            ctx.fillStyle = 'rgba(120, 160, 255, 0.045)';
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(180, 205, 255, 0.35)';
+            ctx.lineWidth = 2.5;
+            ctx.stroke();
+            // 玻璃高光：左上角一道弧，做出圆管的体积感
+            ctx.beginPath();
+            ctx.arc(TUBE.x0 + 150, TUBE.y0 + 70, 120, Math.PI * 1.05, Math.PI * 1.5);
+            ctx.strokeStyle = 'rgba(220, 235, 255, 0.18)';
+            ctx.lineWidth = 5;
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        function drawCathode() {
+            ctx.save();
+            // 阴极：竖直的发射面 + 光晕
+            const g = ctx.createLinearGradient(X_CATHODE - 20, 0, X_CATHODE + 8, 0);
+            g.addColorStop(0, '#5b6377');
+            g.addColorStop(1, '#9aa4bb');
+            ctx.fillStyle = g;
+            ctx.beginPath();
+            ctx.roundRect(X_CATHODE - 20, 330, 22, 240, 5);
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(200, 215, 255, 0.5)';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+            // 发射端微光
+            const gl = ctx.createRadialGradient(X_CATHODE, Y_AXIS, 0, X_CATHODE, Y_AXIS, 70);
+            gl.addColorStop(0, 'rgba(150, 200, 255, 0.35)');
+            gl.addColorStop(1, 'rgba(150, 200, 255, 0)');
+            ctx.fillStyle = gl;
+            ctx.fillRect(X_CATHODE - 70, Y_AXIS - 70, 140, 140);
+            ctx.restore();
+        }
+
+        function drawScreen() {
+            const h = SCREEN_PLATE.y1 - SCREEN_PLATE.y0;
+            ctx.save();
+            // 荧光屏：深绿底 + 亮绿内缘（荧光物质）
+            ctx.fillStyle = '#0d2b22';
+            ctx.beginPath();
+            ctx.roundRect(X_SCREEN, SCREEN_PLATE.y0, 18, h, 4);
+            ctx.fill();
+            ctx.fillStyle = 'rgba(70, 230, 160, 0.55)';
+            ctx.fillRect(X_SCREEN, SCREEN_PLATE.y0, 4, h);
+            ctx.strokeStyle = 'rgba(120, 255, 190, 0.4)';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.roundRect(X_SCREEN, SCREEN_PLATE.y0, 18, h, 4);
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        // 电场极板：只在"加电场"时出现（换磁场时同一区域换成磁场，不能两个同时在场）
+        function drawPlates() {
+            ctx.save();
+            [[PLATE.topY, '+', '#ff6b6b'], [PLATE.botY, '−', '#4dabf7']].forEach(function (p) {
+                const y = p[0];
+                const g = ctx.createLinearGradient(0, y, 0, y + PLATE.h);
+                g.addColorStop(0, '#e8eef8');
+                g.addColorStop(1, '#a9b6cc');
+                ctx.fillStyle = g;
+                ctx.beginPath();
+                ctx.roundRect(PLATE.x0, y, PLATE.x1 - PLATE.x0, PLATE.h, 3);
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+                // 极板电性：标在极板右端，避开射线与场区中心
+                ctx.fillStyle = p[2];
+                ctx.font = 'bold 30px "Microsoft YaHei", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(p[1], PLATE.x1 + 26, y + PLATE.h / 2);
+            });
+            ctx.restore();
+        }
+
+        // 磁场：同样区域里铺 ⊗ 号（垂直纸面向里），不画极板
+        function drawMagneticField() {
+            ctx.save();
+            ctx.strokeStyle = 'rgba(120, 220, 255, 0.42)';
+            ctx.lineWidth = 1.4;
+            const r = 7;
+            for (let x = PLATE.x0 + 40; x <= PLATE.x1 - 40; x += 78) {
+                for (let y = PLATE.topY + 30; y <= PLATE.botY - 30; y += 78) {
+                    ctx.beginPath();
+                    ctx.arc(x, y, r, 0, Math.PI * 2);
+                    ctx.stroke();
+                    const d = r * 0.62;
+                    ctx.beginPath();
+                    ctx.moveTo(x - d, y - d); ctx.lineTo(x + d, y + d);
+                    ctx.moveTo(x + d, y - d); ctx.lineTo(x - d, y + d);
+                    ctx.stroke();
+                }
+            }
+            ctx.restore();
+        }
+
+        // 不加场时的理论路径：虚线 + 空心位置点（只有真的偏转了才画，否则和光斑重叠）
+        function drawGhost(yScreen) {
+            if (Math.abs(yScreen - Y_AXIS) < GHOST_MIN) return;
+            ctx.save();
+            ctx.setLineDash([9, 7]);
+            ctx.strokeStyle = 'rgba(150, 200, 255, 0.22)';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(X_FLD_IN, Y_AXIS);
+            ctx.lineTo(X_SCREEN, Y_AXIS);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.strokeStyle = 'rgba(120, 255, 190, 0.42)';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.arc(X_SCREEN - 2, Y_AXIS, 11, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        function strokeRayPath(pts) {
+            ctx.beginPath();
+            ctx.moveTo(pts[0].x, pts[0].y);
+            for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+            ctx.stroke();
+        }
+
+        function drawRay(pts) {
+            ctx.save();
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            // 三层描边冒充辉光：宽而淡 → 中 → 核心亮线（Canvas 2D 没有 bloom）
+            const layers = [[11, 'rgba(120, 235, 255, 0.10)'],
+                            [5,  'rgba(140, 245, 255, 0.32)'],
+                            [2,  'rgba(215, 255, 255, 0.95)']];
+            layers.forEach(function (L) {
+                ctx.lineWidth = L[0];
+                ctx.strokeStyle = L[1];
+                strokeRayPath(pts);
+            });
+            ctx.restore();
+        }
+
+        // 沿路径流动的电子：把"这是一束粒子流"直接画出来
+        function drawElectrons(pts) {
+            const at = buildSampler(pts);
+            ctx.save();
+            for (let i = 0; i < DOT_COUNT; i++) {
+                let t = (i / DOT_COUNT + dotPhase) % 1;
+                const p = at(t);
+                const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, 7);
+                g.addColorStop(0, 'rgba(235, 255, 255, 0.95)');
+                g.addColorStop(1, 'rgba(120, 235, 255, 0)');
+                ctx.fillStyle = g;
+                ctx.fillRect(p.x - 7, p.y - 7, 14, 14);
+            }
+            ctx.restore();
+        }
+
+        function drawSpot(yScreen) {
+            ctx.save();
+            // 光斑：荧光绿，核心亮 + 外圈晕
+            const halo = ctx.createRadialGradient(X_SCREEN - 2, yScreen, 0, X_SCREEN - 2, yScreen, 52);
+            halo.addColorStop(0.00, 'rgba(120, 255, 190, 0.55)');
+            halo.addColorStop(0.35, 'rgba(90, 230, 170, 0.20)');
+            halo.addColorStop(1.00, 'rgba(90, 230, 170, 0)');
+            ctx.fillStyle = halo;
+            ctx.fillRect(X_SCREEN - 54, yScreen - 54, 108, 108);
+
+            const core = ctx.createRadialGradient(X_SCREEN - 2, yScreen, 0, X_SCREEN - 2, yScreen, 15);
+            core.addColorStop(0, 'rgba(255, 255, 255, 1)');
+            core.addColorStop(0.45, 'rgba(160, 255, 210, 0.95)');
+            core.addColorStop(1, 'rgba(80, 220, 160, 0.15)');
+            ctx.fillStyle = core;
+            ctx.beginPath();
+            ctx.arc(X_SCREEN - 2, yScreen, 15, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
+
+        // 画布上的文字标注：统一加一层深色底板，避免被射线切成碎片
+        function tag(text, x, y, color, size) {
+            ctx.save();
+            size = size || 14;
+            ctx.font = 'bold ' + size + 'px "Microsoft YaHei", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            const w = ctx.measureText(text).width;
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.62)';
+            ctx.beginPath();
+            ctx.roundRect(x - w / 2 - 9, y - size / 2 - 6, w + 18, size + 12, 7);
+            ctx.fill();
+            ctx.fillStyle = color;
+            ctx.fillText(text, x, y);
+            ctx.restore();
+        }
+
+        function drawLabels() {
+            tag('阴极（−）', 150, 96, 'rgba(190, 210, 255, 0.95)');
+            tag('荧光屏', 1090, 96, 'rgba(150, 255, 205, 0.95)');
+            if (mode === 'electric') {
+                tag('偏转区：两块极板之间加电场', 750, 96, 'rgba(255, 220, 190, 0.95)');
+                tag('＋ 正极板', 750, PLATE.topY - 24, 'rgba(255, 150, 150, 0.95)', 13);
+                tag('− 负极板', 750, PLATE.botY + PLATE.h + 24, 'rgba(140, 190, 255, 0.95)', 13);
+            } else if (mode === 'magnetic') {
+                tag('偏转区：加磁场 B ⊗（垂直纸面向里）', 750, 96, 'rgba(180, 235, 255, 0.95)');
+            } else {
+                tag('偏转区：暂时不加任何场', 750, 96, 'rgba(200, 205, 215, 0.9)');
+            }
+        }
+
+        // ══ 现象解读卡 ═══════════════════════════════════════════════
+        const READING = {
+            none: {
+                head: '观察到的现象',
+                body: '射线从阴极笔直飞到荧光屏，光斑落在<strong>正中</strong>——说明管里的这束射线是<strong>直线前进</strong>的。' +
+                      '但它到底带不带电？光看这一张看不出来，得给它加个场试试。',
+                note: '先让学生猜一猜：如果它带电，加上电场之后光斑会往哪边移？'
+            },
+            electric: {
+                head: '加电场：光斑偏向正极板',
+                body: '光斑<strong>向上</strong>移动，落向带<strong>正电</strong>的上极板。' +
+                      '带电的粒子在电场里会被<strong>正极吸引</strong>、被负极排斥——所以这束射线带的是<strong>负电</strong>。',
+                note: '1897 年，汤姆逊正是据此确认：阴极射线是一束带负电的粒子流，他把它命名为「电子」。' +
+                      '既然原子里能跑出比原子更小的粒子——<strong>原子就不是不可再分的</strong>。'
+            },
+            magnetic: {
+                head: '加磁场：光斑反向偏转',
+                body: '光斑<strong>向下</strong>移动，与加电场时的方向<strong>正好相反</strong>。' +
+                      '两种完全不同的场，给出方向相反的偏转，却指向<strong>同一个结论</strong>：这束射线带负电。',
+                note: '这一组是<strong>旁证</strong>。核心证据是电场那一组——"偏向正极"直接说明了电性。'
+            }
+        };
+
+        function updateReading() {
+            const d = READING[mode];
+            document.getElementById('readingHead').innerHTML = d.head;
+            document.getElementById('readingBody').innerHTML = d.body;
+            document.getElementById('readingNote').innerHTML = d.note;
+            document.getElementById('reading').setAttribute('data-mode', mode);
+        }
+
+        // ══ 交互 ═════════════════════════════════════════════════════
+        function setMode(m) {
+            const changed = (m !== mode);
+            mode = m;
+            // 同步 radio。setMode 也会被程序调用（重置、探针），不同步就会出现
+            // "画面已经是磁场、按钮还停在不加场"的状态漂移。
+            // 给 checked 赋值【不会】触发 change 事件，所以不会与上面的监听器互相递归。
+            document.querySelectorAll('input[name="fieldMode"]').forEach(function (r) {
+                r.checked = (r.value === m);
+            });
+            if (changed) retracting = true;   // 只有真的换场才需要"先拉直、再弯向新方向"
+            updateReading();
+        }
+
+        document.querySelectorAll('input[name="fieldMode"]').forEach(function (radio) {
+            radio.addEventListener('change', function () { setMode(this.value); });
+        });
+
+        document.getElementById('strength').addEventListener('input', function () {
+            strength = parseInt(this.value, 10);
+            document.getElementById('strengthValue').textContent = this.value;
+        });
+
+        function resetTube() {
+            retracting = false;
+            deflect = 0;
+            strength = 6;
+            document.getElementById('strength').value = 6;
+            document.getElementById('strengthValue').textContent = '6';
+            setMode('none');   // 由 setMode 统一同步 radio 与解读卡，避免两处各写一遍
+        }
+
+        // 偏转量逐帧逼近目标：换场时先归零，再弯向新方向。
+        // 单独抽成函数是为了能被无头探针驱动（--dump-dom 模式下 rAF 不执行，
+        // 探针必须能手动 step，否则只能测到初始帧）。
+        // ⚠️ 归零判定必须写在 if 外面：若 deflect 本来就是 0（开机 / 刚重置），
+        //    内层分支不会执行，retracting 就永远解除不了 —— 射线再也弯不起来。
+        function stepDeflect() {
+            const target = deflectTarget();
+            if (Math.abs(target - deflect) > 1e-6) {
+                deflect += (target - deflect) * EASE;
+                if (Math.abs(target - deflect) < 0.002) deflect = target;
+            }
+            if (retracting && deflect < 1e-6) { deflect = 0; retracting = false; }
+        }
+
+        // ══ 主循环 ═══════════════════════════════════════════════════
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawGrid();
+            drawTube();
+
+            stepDeflect();
+            const ray = buildRay();
+
+            if (mode === 'electric') {
+                drawPlates();
+            } else if (mode === 'magnetic') {
+                drawMagneticField();
+            }
+            drawGhost(ray.yScreen);
+            drawScreen();
+            drawCathode();
+            drawRay(ray.pts);
+            drawElectrons(ray.pts);
+            drawSpot(ray.yScreen);
+            drawLabels();
+
+            dotPhase = (dotPhase + 0.0022) % 1;
+            requestAnimationFrame(animate);
+        }
+
+        updateReading();
+        animate();
+    </script>
+</body>
+</html>
