@@ -12,6 +12,9 @@
             align-items: center;
             padding: 20px;
             min-height: 100vh;
+            /* 必须有 box-sizing：否则 min-height 不包含上下各 20px 的 padding，
+               页面总高变成 100vh + 40，明明内容装得下却仍多出一条滚动条 */
+            box-sizing: border-box;
             margin: 0;
         }
         h1 {
@@ -30,73 +33,204 @@
             border-radius: 10px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.3);
         }
-        /* 主区：左侧画布 + 右侧信息栏。
-           画布放大到 1000×750 后，若仍上下单列，页面总高会到 1360px 左右（1080p 投影要滚 400px）；
-           改成左右两栏后总高约 880px < 1080，投影时一屏就能看全 */
+        /* 主区：左侧画布 + 右侧「元素周期表（上）+ 信息/说明卡片（下）」。
+           画布 1000×750 是投影看模型的下限，不再压缩。
+           周期表放在画布右侧、而不是下方，是因为实测视口高只有 928px、原有内容已占 909px
+           ——「画布 + 下方整宽周期表」在数学上放不下，纵向塞不进第二个 300px 区块。
+           右侧宽度上限见 .right-col 的注释，超了会整块掉到画布下方 */
         .stage {
             display: flex;
-            gap: 24px;
+            gap: 22px;
             align-items: flex-start;
             justify-content: center;
-            flex-wrap: wrap;      /* 屏幕太窄时自动回落成原来的上下单列 */
+            flex-wrap: wrap;      /* 屏幕太窄时自动回落成上下单列 */
         }
-        .side {
-            width: 360px;
+        /* 780px 是算出来的：实测内容区仅 1887px 宽，减去 body 左右各 20px padding
+           是 1847px；画布连边框 1006px + 栏间距 22px 之后，右侧只剩 819px 可用。
+           取 780 留 39px 余量——一旦超了，flex-wrap 会把整块周期表甩到画布下方，
+           页面高度立刻从 909 涨到 1515（实测踩过） */
+        .right-col {
+            width: 780px;
             display: flex;
             flex-direction: column;
-            gap: 16px;
+            gap: 14px;
         }
-        .controls {
+        /* 信息面板与模型说明并排：横排后每张卡片约 410px，仍能放下整句不折行 */
+        .cards-row {
             display: flex;
-            flex-direction: column;
-            gap: 12px;
+            gap: 14px;
+            align-items: stretch;
+        }
+        .cards-row > * {
+            flex: 1 1 0;
+            min-width: 0;         /* 不加这句 flex 子项会被内容撑破，窄屏下撑出横向滚动 */
+        }
+
+        /* ── 元素周期表 ───────────────────────────────────────────────
+           7 行 × 18 族的完整骨架：118 个位置全部画出来，
+           但只有 elements 里有数据的元素可点，其余灰显。
+           做成真表而不是下拉列表，是为了让「原子序数 = 质子数」
+           与元素在表中的位置直接挂钩。 */
+        .ptable-card {
             background: rgba(255,255,255,0.95);
-            padding: 20px;
             border-radius: 10px;
+            padding: 12px 12px 10px;
             box-shadow: 0 5px 15px rgba(0,0,0,0.2);
         }
-        label {
-            font-weight: bold;
-            color: #333;
+        .ptable-head {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 13px;
+            color: #555;
         }
-        select {
-            width: 100%;
-            box-sizing: border-box;
-            padding: 10px 15px;
-            font-size: 16px;
-            border-radius: 8px;
-            border: 2px solid #667eea;
-            background: white;
-            cursor: pointer;
+        .ptable-head strong { color: #667eea; font-size: 14px; }
+        .ptable-head .pt-hint { font-size: 12px; color: #9aa0b8; }
+
+        /* 第 1 列是周期序号，第 2~19 列对应族 1~18。行高 36px：
+           格子约 40×36，刚好放「左上角序号 + 居中符号」两行 */
+        .ptable {
+            display: grid;
+            grid-template-columns: 26px repeat(18, 1fr);
+            grid-auto-rows: 36px;
+            gap: 3px;
+        }
+        .pt-rowlabel {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            color: #9aa0b8;
+        }
+        .pt-cell {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            margin: 0;
+            border: 1px solid #d9def0;
+            border-radius: 5px;
+            background: #fff;
+            font-family: inherit;
+            font-size: 14px;
             font-weight: bold;
-            color: #333;
+            color: #3a4059;
+            cursor: pointer;
+            transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.1s;
+        }
+        .pt-cell .pt-z {          /* 左上角原子序数 */
+            position: absolute;
+            left: 3px;
+            top: 2px;
+            font-size: 8px;
+            font-weight: normal;
+            color: #98a0bb;
+            line-height: 1;
+        }
+        .pt-cell:hover { background: #eef1ff; border-color: #667eea; }
+        .pt-cell:active { transform: scale(0.94); }
+
+        /* 无数据元素：灰显且不可点（不编造数据，但保留它在表中的真实位置） */
+        .pt-cell.off {
+            background: #f3f4f9;
+            border-color: #e7e9f2;
+            color: #bcc0d0;
+            cursor: default;
+            font-weight: normal;
+            font-size: 12px;
+        }
+        .pt-cell.off .pt-z { color: #c9ccd9; }
+        .pt-cell.off:hover { background: #f3f4f9; border-color: #e7e9f2; }
+
+        /* 镧系 / 锕系占位格：第 6、7 周期第 3 列，各代表 15 个元素 */
+        .pt-cell.ph {
+            flex-direction: column;
+            gap: 1px;
+            background: #f7f8fc;
+            border-style: dashed;
+            border-color: #c9d0ea;
+            cursor: default;
+        }
+        .pt-cell.ph:hover { background: #f7f8fc; border-color: #c9d0ea; }
+        .pt-cell.ph .ph-n { font-size: 9px;   font-weight: normal; color: #98a0bb; line-height: 1; }
+        .pt-cell.ph .ph-t { font-size: 10px;  font-weight: normal; color: #a8aec6; line-height: 1; }
+
+        /* 当前元素所在的整行 / 整列淡紫铺底 —— 一眼看出
+           「周期 → 行（电子层数）」「主族 → 列（最外层电子数）」。
+           灰显格与占位格一起参与，横带才连得起来 */
+        .pt-cell.hl { background: #eef1ff; }
+
+        /* 当前选中元素：紫蓝渐变实心。必须写在 .hl / :hover 之后 —— 三者权重相同，靠顺序取胜 */
+        .pt-cell.cur,
+        .pt-cell.cur:hover {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-color: transparent;
+            color: #fff;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.45);
+        }
+        .pt-cell.cur .pt-z { color: rgba(255, 255, 255, 0.78); }
+
+        .ptable-foot {
+            margin-top: 7px;
+            font-size: 11.5px;
+            color: #6b7188;
+            line-height: 1.5;
+        }
+        .ptable-foot b { color: #667eea; }
+        .ptable-foot .sep { color: #c8ccda; margin: 0 6px; }
+        .ptable-foot .off-key {
+            display: inline-block;
+            width: 9px;
+            height: 9px;
+            border-radius: 2px;
+            background: #f3f4f9;
+            border: 1px solid #e7e9f2;
+            vertical-align: -1px;
+            margin-right: 3px;
         }
         .info {
-            padding: 20px 25px;
+            padding: 16px 18px;
             background: rgba(255,255,255,0.95);
             border-radius: 10px;
-            font-size: 15px;
-            line-height: 1.8;
+            font-size: 14px;
+            line-height: 1.75;
+            color: #333;
             box-shadow: 0 5px 15px rgba(0,0,0,0.2);
         }
         .info strong {
             color: #667eea;
-            font-size: 20px;
+            font-size: 19px;
         }
         .electron-config {
             display: inline-block;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            padding: 5px 15px;
+            padding: 4px 13px;
             border-radius: 20px;
             font-weight: bold;
-            margin-left: 10px;
+            font-size: 13px;
+            margin-left: 6px;
+        }
+        /* 周期标签：跟在元素名后面，小一号、弱化——不抢元素名的视觉，
+           但提示"它在周期表的第几行"，与左边高亮的行同源 */
+        .pos-tag {
+            display: inline-block;
+            margin-left: 8px;
+            padding: 1px 9px;
+            border-radius: 10px;
+            background: #eef1ff;
+            color: #667eea;
+            font-size: 12px;
+            font-weight: bold;
+            vertical-align: 2px;
         }
         .legend {
             background: rgba(255,255,255,0.95);
-            padding: 15px 22px;
+            padding: 14px 18px;
             border-radius: 10px;
-            font-size: 14px;
+            font-size: 13px;
             color: #333;
             line-height: 1.7;
             box-shadow: 0 5px 15px rgba(0,0,0,0.2);
@@ -104,8 +238,8 @@
         /* 核内质子/中子色标：所有元素都会展开核内结构，因此常显 */
         .nucleon-key {
             display: block;
-            margin-top: 12px;
-            padding-top: 12px;
+            margin-top: 10px;
+            padding-top: 10px;
             border-top: 1px dashed #ccc;
         }
         .nucleon-key sup { font-size: 0.75em; }
@@ -177,6 +311,56 @@
             color: #333;
             transform: translateY(-1px);
         }
+        /* ── 页面署名（右下角胶囊标签，悬停展开完整署名） ───────────────
+           与其他四页同款：position:fixed 不占布局高度，探针量 contentH 时会跳过它 */
+        .signature {
+            position: fixed;
+            right: 20px;
+            bottom: 15px;
+            padding: 8px 18px;
+            background: rgba(255, 255, 255, 0.82);
+            color: #555;
+            font-size: 13px;
+            border-radius: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.12);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            user-select: none;
+            z-index: 1000;
+            cursor: pointer;
+            letter-spacing: 0.3px;
+            display: flex;
+            align-items: center;
+            white-space: nowrap;
+            transition: background 0.35s ease, color 0.35s ease,
+                        box-shadow 0.35s ease, transform 0.35s ease;
+        }
+        .signature .author-short {
+            display: inline-block;
+            max-width: 80px;
+            overflow: hidden;
+            transition: max-width 0.35s ease, opacity 0.3s ease;
+        }
+        .signature .author-full {
+            display: inline-block;
+            max-width: 0;
+            opacity: 0;
+            margin-left: 0;
+            overflow: hidden;
+            transition: max-width 0.35s ease, opacity 0.35s ease 0.05s,
+                        margin-left 0.35s ease;
+        }
+        .signature:hover {
+            background: rgba(255, 255, 255, 0.95);
+            color: #333;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.2);
+            transform: translateY(-1px);
+        }
+        .signature:hover .author-full {
+            max-width: 260px;
+            opacity: 1;
+            margin-left: 10px;
+        }
     </style>
 </head>
 <body data-page-node-id="zbBE1Q8IQGQuVgvUEJuHyn">
@@ -187,84 +371,49 @@
     <div class="stage">
         <canvas id="canvas" width="1000" height="750" data-page-node-id="4Iem9cQghvBXHgah6RFGtA"></canvas>
 
-        <aside class="side">
-            <div class="controls" data-page-node-id="PWoktYtl3hoVGEGML0sACa">
-                <label data-page-node-id="u3WaNjo6imgnCj8GxDXKZQ">选择元素:</label>
-                <select id="element" onchange="changeElement()" data-page-node-id="r2UgFDj3pvazEX5eVlYAdp">
-                    <!-- 按周期分组（前 36 号元素）+ 拓展金：与元素周期表的认知顺序一致，找元素最快 -->
-                    <optgroup label="第 1 周期">
-                        <option value="H" data-page-node-id="elr94BYwW5TppF1nsLuO5j">氢 (H) - 1个电子</option>
-                        <option value="He" data-page-node-id="8HcDVC7G4Aj8nQ4cqoQVRk">氦 (He) - 2个电子</option>
-                    </optgroup>
-                    <optgroup label="第 2 周期">
-                        <option value="Li" selected data-page-node-id="xBHWt69RZO60ImaeXF1Buy">锂 (Li) - 3个电子</option>
-                        <option value="Be" data-page-node-id="hKCkegwstots2tUfe4K6V6">铍 (Be) - 4个电子</option>
-                        <option value="B" data-page-node-id="GrQIdIJwGPZSb6m75yVpOV">硼 (B) - 5个电子</option>
-                        <option value="C" data-page-node-id="7Tfd1rQGpOx2cO4dHoD7m2">碳 (C) - 6个电子</option>
-                        <option value="N" data-page-node-id="iOYJytkmCspQeq3sJJO4Gn">氮 (N) - 7个电子</option>
-                        <option value="O" data-page-node-id="OI1OfXkuGVYoB0k2NExLZq">氧 (O) - 8个电子</option>
-                        <option value="F">氟 (F) - 9个电子</option>
-                        <option value="Ne">氖 (Ne) - 10个电子</option>
-                    </optgroup>
-                    <optgroup label="第 3 周期">
-                        <option value="Na">钠 (Na) - 11个电子</option>
-                        <option value="Mg">镁 (Mg) - 12个电子</option>
-                        <option value="Al">铝 (Al) - 13个电子</option>
-                        <option value="Si">硅 (Si) - 14个电子</option>
-                        <option value="P">磷 (P) - 15个电子</option>
-                        <option value="S">硫 (S) - 16个电子</option>
-                        <option value="Cl">氯 (Cl) - 17个电子</option>
-                        <option value="Ar">氩 (Ar) - 18个电子</option>
-                    </optgroup>
-                    <optgroup label="第 4 周期">
-                        <option value="K">钾 (K) - 19个电子</option>
-                        <option value="Ca">钙 (Ca) - 20个电子</option>
-                        <option value="Sc">钪 (Sc) - 21个电子</option>
-                        <option value="Ti">钛 (Ti) - 22个电子</option>
-                        <option value="V">钒 (V) - 23个电子</option>
-                        <option value="Cr">铬 (Cr) - 24个电子</option>
-                        <option value="Mn">锰 (Mn) - 25个电子</option>
-                        <option value="Fe">铁 (Fe) - 26个电子</option>
-                        <option value="Co">钴 (Co) - 27个电子</option>
-                        <option value="Ni">镍 (Ni) - 28个电子</option>
-                        <option value="Cu">铜 (Cu) - 29个电子</option>
-                        <option value="Zn">锌 (Zn) - 30个电子</option>
-                        <option value="Ga">镓 (Ga) - 31个电子</option>
-                        <option value="Ge">锗 (Ge) - 32个电子</option>
-                        <option value="As">砷 (As) - 33个电子</option>
-                        <option value="Se">硒 (Se) - 34个电子</option>
-                        <option value="Br">溴 (Br) - 35个电子</option>
-                        <option value="Kr">氪 (Kr) - 36个电子</option>
-                    </optgroup>
-                    <!-- 金：α 散射实验中金核带 +79e，此处的 79 个质子正是它的出处 -->
-                    <optgroup label="拓展元素">
-                        <option value="Au">金 (Au) - 79个电子</option>
-                    </optgroup>
-                </select>
-            </div>
-
-            <div class="info" id="info" data-page-node-id="9nToe8YEEIFmmIMk9a1h6e">
-                <strong data-page-node-id="EXLSd892Ic4FW7aBlr4dy9">锂 (Li)</strong><br data-page-node-id="VuTp81l8OLLPSTGm8nvcTL">
-                原子序数: 3<br data-page-node-id="rekEBxmq9gahcWEKDzJjOk">
-                电子排布: <span class="electron-config" data-page-node-id="ol4V8Jb9eUpQs2SVzQRHHf">2, 1</span><br data-page-node-id="dl0ngoBDkJ9bYR39lw0ECY">
-                原子核: 3个质子（带3个单位正电荷）
-            </div>
-
-            <div class="legend" data-page-node-id="gSH2ENOlnpCx4qdfsYGp0h">
-                💡 <strong data-page-node-id="Cf49VIUvgnrmS8RZJQ5KrB">模型说明</strong>：原子核位于中心，电子（青色，带负电）绕核分层运动。<br data-page-node-id="K0nlXDxKBGg2WFyLyesm6r">
-                电子分层排布：第 n 层最多容纳 2n² 个电子（K 2 / L 8 / M 18 / N 32），最外层不超过 8 个。
-                <!-- 核内微粒色标：所有元素都已展开核内结构，常显 -->
-                <div class="nucleon-key" id="nucleonKey">
-                    <i class="p"></i>质子（带正电，红）　<i class="n"></i>中子（不带电，灰）<br>
-                    <span id="nucleonText"></span><br>
-                    <span class="hint">👆 悬浮原子核可查看质子/中子数量</span>
+        <div class="right-col">
+            <!-- 元素周期表：选择题从这里来。7 行 × 18 族的位置全部画出，
+                 只有 elements 里有数据的元素可点，其余灰显（本模型不编造数据） -->
+            <div class="ptable-card">
+                <div class="ptable-head">
+                    <strong>元素周期表</strong>
+                    <span class="pt-hint">点击元素 → 切换原子模型</span>
+                </div>
+                <div class="ptable" id="ptable"></div>
+                <div class="ptable-foot">
+                    <b>同一行</b>电子层数相同<span class="sep">·</span><b>同一主族列</b>最外层电子数相同<span class="sep">·</span><span class="off-key"></span>灰格为本模型暂无数据的元素
                 </div>
             </div>
-        </aside>
+
+            <div class="cards-row">
+                <div class="info" id="info">
+                    <strong>锂 (Li)</strong><br>
+                    原子序数: 3<br>
+                    电子排布: <span class="electron-config">2, 1</span><br>
+                    原子核: 3个质子（带3个单位正电荷）
+                </div>
+
+                <div class="legend">
+                    💡 <strong>模型说明</strong>：原子核位于中心，电子（青色，带负电）绕核分层运动。<br>
+                    电子分层排布：第 n 层最多容纳 2n² 个电子（K 2 / L 8 / M 18 / N 32），最外层不超过 8 个。
+                    <!-- 核内微粒色标：所有元素都已展开核内结构，常显 -->
+                    <div class="nucleon-key" id="nucleonKey">
+                        <i class="p"></i>质子（带正电，红）　<i class="n"></i>中子（不带电，灰）<br>
+                        <span id="nucleonText"></span><br>
+                        <span class="hint">👆 悬浮原子核可查看质子/中子数量</span>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- 核子数量悬浮提示（跟随光标；仅展开核内结构的元素有完整数据，如金） -->
     <div class="nucleus-tip" id="nucleusTip"></div>
+
+    <!-- 页面署名（默认收起为「作者」，悬停展开完整信息） -->
+    <div class="signature" title="悬停查看作者信息">
+        <span class="author-short">作者</span><span class="author-full">张曾继明 · 西南大学 · © 2026</span>
+    </div>
 
     <script>
         const canvas = document.getElementById('canvas');
@@ -325,6 +474,136 @@
             // 它依然遵守初中那条规律：最外层（第 6 层）只有 1 个电子，不超过 8 个
             'Au': {name: '金', protons: 79, neutrons: 118, electrons: [2, 8, 18, 32, 18, 1], symbol: 'Au'}
         };
+
+        // === 元素周期表骨架 ===
+        // 7 个周期，每项 [元素符号, 原子序数, 族列号(1~18)]。
+        // 列号就是长式周期表里的位置：第 1~2 族在左、第 13~18 族在右，中间 3~12 列是过渡元素；
+        // 第 2、3 周期的 3~12 列在真实的周期表里天然为空（所以那两行会有缺口）。
+        // 原子序数在这里独立列一份，用来和 elements 里的 protons 互相印证——
+        // 表上标的数和信息面板里的质子数必须一致，这正是本页要讲的「原子序数 = 质子数」。
+        const PT_PERIODS = [
+            [ // 第 1 周期
+                ['H',   1,  1], ['He',  2, 18]
+            ],
+            [ // 第 2 周期
+                ['Li',  3,  1], ['Be',  4,  2], ['B',   5, 13], ['C',   6, 14],
+                ['N',   7, 15], ['O',   8, 16], ['F',   9, 17], ['Ne', 10, 18]
+            ],
+            [ // 第 3 周期
+                ['Na', 11,  1], ['Mg', 12,  2], ['Al', 13, 13], ['Si', 14, 14],
+                ['P',  15, 15], ['S',  16, 16], ['Cl', 17, 17], ['Ar', 18, 18]
+            ],
+            [ // 第 4 周期（3~12 列是过渡元素，M 层电子数会超过 8）
+                ['K',  19,  1], ['Ca', 20,  2], ['Sc', 21,  3], ['Ti', 22,  4],
+                ['V',  23,  5], ['Cr', 24,  6], ['Mn', 25,  7], ['Fe', 26,  8],
+                ['Co', 27,  9], ['Ni', 28, 10], ['Cu', 29, 11], ['Zn', 30, 12],
+                ['Ga', 31, 13], ['Ge', 32, 14], ['As', 33, 15], ['Se', 34, 16],
+                ['Br', 35, 17], ['Kr', 36, 18]
+            ],
+            [ // 第 5 周期
+                ['Rb', 37,  1], ['Sr', 38,  2], ['Y',  39,  3], ['Zr', 40,  4],
+                ['Nb', 41,  5], ['Mo', 42,  6], ['Tc', 43,  7], ['Ru', 44,  8],
+                ['Rh', 45,  9], ['Pd', 46, 10], ['Ag', 47, 11], ['Cd', 48, 12],
+                ['In', 49, 13], ['Sn', 50, 14], ['Sb', 51, 15], ['Te', 52, 16],
+                ['I',  53, 17], ['Xe', 54, 18]
+            ],
+            [ // 第 6 周期：第 3 列留给镧系（57~71），所以钡之后直接由 Hf(72) 接第 4 列
+                ['Cs', 55,  1], ['Ba', 56,  2],
+                ['Hf', 72,  4], ['Ta', 73,  5], ['W',  74,  6], ['Re', 75,  7],
+                ['Os', 76,  8], ['Ir', 77,  9], ['Pt', 78, 10], ['Au', 79, 11],
+                ['Hg', 80, 12], ['Tl', 81, 13], ['Pb', 82, 14], ['Bi', 83, 15],
+                ['Po', 84, 16], ['At', 85, 17], ['Rn', 86, 18]
+            ],
+            [ // 第 7 周期：第 3 列留给锕系（89~103），从 Rf(104) 接第 4 列
+                ['Fr', 87,  1], ['Ra', 88,  2],
+                ['Rf',104,  4], ['Db',105,  5], ['Sg',106,  6], ['Bh',107,  7],
+                ['Hs',108,  8], ['Mt',109,  9], ['Ds',110, 10], ['Rg',111, 11],
+                ['Cn',112, 12], ['Nh',113, 13], ['Fl',114, 14], ['Mc',115, 15],
+                ['Lv',116, 16], ['Ts',117, 17], ['Og',118, 18]
+            ]
+        ];
+
+        // 镧系 / 锕系占位格：各代表 15 个元素，不逐个展开（初中教学不需要这 30 个）
+        const PT_PLACEHOLDERS = [
+            {period: 6, col: 3, num: '57-71',  label: '镧系'},
+            {period: 7, col: 3, num: '89-103', label: '锕系'}
+        ];
+
+        // 符号 → {period, col, z}：切换元素时 O(1) 取位置，用来高亮同行同列
+        const PT_POS = {};
+        PT_PERIODS.forEach((row, i) => {
+            row.forEach(([sym, z, col]) => { PT_POS[sym] = {period: i + 1, col: col, z: z}; });
+        });
+
+        // 建表：只在初始化时跑一次，之后只改 class 不重建 DOM。
+        // 有数据的用 <button>（可点、可键盘操作、有焦点框），没数据的用 <div>——
+        // 语义上就该点不动，也不必给 tab 焦点。
+        let ptCells = [];
+        function buildPeriodicTable() {
+            const grid = document.getElementById('ptable');
+            grid.innerHTML = '';
+            ptCells = [];
+
+            // 第 1 列：周期序号（1~7）。只标行号不标族号——族号 ⅠA/ⅢB 那套
+            // 超出初中认知范围，弱化反而更干净
+            for (let p = 1; p <= 7; p++) {
+                const lab = document.createElement('div');
+                lab.className = 'pt-rowlabel';
+                lab.textContent = p;
+                lab.style.gridArea = p + ' / 1';
+                grid.appendChild(lab);
+            }
+
+            // 镧系 / 锕系占位格。也写 period/col 并进 ptCells ——
+            // 它们占着第 6、7 周期的第 3 列，选金时整行高亮要靠它们连起来
+            PT_PLACEHOLDERS.forEach(ph => {
+                const d = document.createElement('div');
+                d.className = 'pt-cell ph';
+                d.style.gridArea = ph.period + ' / ' + (ph.col + 1);
+                d.dataset.period = ph.period;
+                d.dataset.col = ph.col;
+                d.title = ph.label + '：原子序数 ' + ph.num + '（共 15 个元素，未逐个展开）';
+                d.innerHTML = '<span class="ph-n">' + ph.num + '</span>' +
+                              '<span class="ph-t">' + ph.label + '</span>';
+                grid.appendChild(d);
+                ptCells.push(d);
+            });
+
+            // 元素格：序号贴左上角、符号居中，所以格子里只有两个 span/文本节点
+            PT_PERIODS.forEach((row, i) => {
+                const period = i + 1;
+                row.forEach(([sym, z, col]) => {
+                    const has = !!elements[sym];
+                    const cell = document.createElement(has ? 'button' : 'div');
+                    cell.className = 'pt-cell' + (has ? '' : ' off');
+                    cell.style.gridArea = period + ' / ' + (col + 1);
+                    cell.dataset.period = period;
+                    cell.dataset.col = col;
+                    cell.innerHTML = '<span class="pt-z">' + z + '</span>' + sym;
+                    if (has) {
+                        cell.type = 'button';
+                        cell.dataset.sym = sym;
+                        cell.title = elements[sym].name + '（' + sym + '）· ' + z + ' 号元素 · 第 ' + period + ' 周期';
+                    } else {
+                        cell.title = sym + ' · ' + z + ' 号元素（本模型暂无数据）';
+                    }
+                    grid.appendChild(cell);
+                    ptCells.push(cell);
+                });
+            });
+        }
+
+        // 高亮当前元素所在的整行（周期）与整列（族）。
+        // 灰显格、占位格一起参与：选金时若它们不亮，第 6 周期就只剩一格亮着，
+        // 看不出"一整行 = 一个周期"这条横带
+        function updateTableHighlight() {
+            const pos = PT_POS[currentElement];
+            ptCells.forEach(cell => {
+                const on = !!pos && (+cell.dataset.period === pos.period || +cell.dataset.col === pos.col);
+                cell.classList.toggle('hl', on);
+                cell.classList.toggle('cur', cell.dataset.sym === currentElement);
+            });
+        }
 
         // === 核内质子 / 中子 ===
         // 原子核不再是"一个带电的圆"，而是逐颗画出核子：红=质子、灰=中子。
@@ -565,21 +844,29 @@
             ctx.fillText(element.symbol, centerX, canvas.height - 40);
         }
 
-        // 切换元素
-        function changeElement() {
-            currentElement = document.getElementById('element').value;
+        // 切换元素：唯一的入口。周期表格子点击、URL 参数、初始化都走这里
+        function selectElement(sym) {
+            if (!elements[sym]) return;      // 灰显元素点了不该有反应
+            currentElement = sym;
             initElectrons();
             hideNucleusTip();     // 切元素时清掉可能还挂着的悬浮提示
             tipSymbol = null;    // 下一元素需重建提示内容
+            updateTableHighlight();
+            updateInfoPanel();
+        }
 
+        // 信息面板：把「原子序数 = 质子数 = 核外电子数」压在同一行并排显示，
+        // 与周期表格子左上角的序号互为印证——这是本页最想让学生盯住的一处相等关系
+        function updateInfoPanel() {
             const element = elements[currentElement];
             const electronConfig = element.electrons.join(', ');
             const totalElectrons = element.electrons.reduce((a, b) => a + b, 0);
             const massNumber = element.protons + element.neutrons;   // 质量数 = 质子数 + 中子数
+            const pos = PT_POS[currentElement];
 
             document.getElementById('info').innerHTML = `
-                <strong>${element.name} (${element.symbol})</strong><br>
-                原子序数: ${element.protons}<br>
+                <strong>${element.name} (${element.symbol})</strong>${pos ? `<span class="pos-tag">第 ${pos.period} 周期</span>` : ''}<br>
+                原子序数: ${element.protons} = 质子数 = 核外电子数<br>
                 电子排布: <span class="electron-config">${electronConfig}</span><br>
                 原子核: ${element.protons}个质子（带${element.protons}个单位正电荷）<br>
                 中子: ${element.neutrons}个（不带电）<br>
@@ -661,19 +948,27 @@
             requestAnimationFrame(animate);
         }
 
+        // 点击周期表格子切换元素。事件委托：一百多个格子只挂一个监听，
+        // 且以后往表里加元素不必重新绑定
+        document.getElementById('ptable').addEventListener('click', function (ev) {
+            const btn = ev.target.closest('.pt-cell[data-sym]');
+            if (btn) selectElement(btn.dataset.sym);
+        });
+
         // 支持用 URL 指定打开时显示的元素 —— 供 α 散射页「点击金核」跳转过来直接落在金原子上
         //   写法：atomic_model.html?element=Au（也兼容 hash 写法 #Au）
+        let initialElement = 'Li';
         (function applyUrlElement() {
             const m = location.search.match(/[?&]element=([A-Za-z]{1,2})\b/)
                    || location.hash.match(/^#([A-Za-z]{1,2})$/);
             if (!m) return;
             // 归一化大小写：au / AU / Au → Au
             const sym = m[1].charAt(0).toUpperCase() + m[1].slice(1).toLowerCase();
-            if (elements[sym]) document.getElementById('element').value = sym;
+            if (elements[sym]) initialElement = sym;
         })();
 
-        initElectrons();
-        changeElement(); // 初始化信息面板（读取下拉框当前值，可能是 URL 指定的元素）
+        buildPeriodicTable();
+        selectElement(initialElement);   // 内含 initElectrons + 高亮周期表 + 刷新信息面板
         animate();
     </script>
 </body>

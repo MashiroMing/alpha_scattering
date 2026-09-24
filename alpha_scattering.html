@@ -59,7 +59,7 @@
             aspect-ratio: 4 / 3;
             flex: 0 0 auto;
         }
-        /* 右侧信息栏：高度锁定 = 画布高。内部说明区超出时自己滚动，页面永不变长 */
+        /* 右侧信息栏：高度锁定 = 画布高。内容超出时【栏内滚动】，页面永不变长 */
         .side {
             flex: 0 0 var(--side-w);
             width: var(--side-w);
@@ -68,6 +68,11 @@
             flex-direction: column;
             gap: 12px;
             min-width: 0;
+            /* 展开「实验说明」后正文会撑高本栏 —— 由这里出滚动条，绝不把整页顶高 */
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding-right: 6px;      /* 给滚动条留位，免得贴住卡片 */
+            box-sizing: border-box;  /* 不让上面的 padding 撑宽右栏 */
         }
         .panel {
             background: rgba(255,255,255,0.95);
@@ -243,14 +248,15 @@
             color: #333;
             overflow: hidden;
         }
-        /* 折叠时贴到右栏底部，与画布下沿对齐；展开时向上填满剩余空间 */
+        /* 折叠时贴到右栏底部，与画布下沿对齐 */
         .legend:not([open]) {
             margin-top: auto;
         }
-        .legend[open] {
-            flex: 1 1 auto;
-            min-height: 0;
-        }
+        /* ⚠️ 别给 .legend[open] 加 flex:1 1 auto —— <details> 的正文会被浏览器塞进
+           一个 shadow slot，而 slot 本身不是 flex 容器，于是 .legend-body 上的
+           flex / min-height:0 全部失效：展开后正文既不收缩也不滚动，直接被 .legend
+           的 overflow:hidden 裁掉，连滚动条都没有（曾踩过）。
+           现在统一由 .side 出滚动条 —— 展开后正文按自然高度撑开即可。 */
         .legend > summary {
             cursor: pointer;
             padding: 12px 16px;
@@ -278,8 +284,8 @@
             border-bottom: 1px solid rgba(142,124,195,0.25);
         }
         .legend-body {
-            flex: 1 1 auto;
-            min-height: 0;
+            /* 高度不设限：展开后按自然高度撑开，由 .side 出滚动条。
+               这里的 overflow-y 只在窄屏生效（下方 media query 给了 max-height:340px）。 */
             overflow-y: auto;
             padding: 4px 16px 14px;
             line-height: 1.6;
@@ -1368,6 +1374,26 @@
                 egg.textContent = want ? EGG_TEXT : '';
                 sig.title = want ? EGG_TEXT : ORIG_TITLE;
             }, { passive: false });   // 必须非 passive，否则 preventDefault 无效
+        })();
+
+        /* 展开「实验说明」后，只在标题落到可视区外时才把它滚到右栏顶部。
+           右栏比画布高时是滚动容器：不滚的话展开的正文落在可视区下方，会以为"点了没反应"；
+           而本来就在可视区内时保持原位，免得把上面的控件顶出视野。只滚右栏，不动整页。 */
+        (function () {
+            const side = document.querySelector('.side');
+            const det = document.querySelector('details.legend');
+            if (!side || !det) return;
+            det.addEventListener('toggle', function () {
+                if (!det.open) { side.scrollTop = 0; return; }
+                // 同步读矩形：getBoundingClientRect 会强制刷新布局，拿到的就是【展开后】的位置。
+                // 这里刻意【不用 requestAnimationFrame】—— 无头 Chrome 在虚拟时间下可能整帧不触发，
+                // 用它会让这段逻辑无法被自动化验证（曾踩过）。
+                const box = side.getBoundingClientRect();
+                const r = det.getBoundingClientRect();
+                if (r.top < box.top - 4 || r.top > box.bottom - 40) {
+                    side.scrollTop += r.top - box.top;
+                }
+            });
         })();
     </script>
 </body>
