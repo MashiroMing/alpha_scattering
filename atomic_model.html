@@ -24,7 +24,7 @@
         }
         .subtitle {
             color: rgba(255,255,255,0.9);
-            font-size: 14px;
+            font-size: 16px;
             margin-bottom: 20px;
         }
         #canvas {
@@ -82,11 +82,11 @@
             align-items: baseline;
             justify-content: space-between;
             margin-bottom: 8px;
-            font-size: 13px;
+            font-size: 15px;
             color: #555;
         }
-        .ptable-head strong { color: #667eea; font-size: 14px; }
-        .ptable-head .pt-hint { font-size: 12px; color: #9aa0b8; }
+        .ptable-head strong { color: #667eea; font-size: 17px; }
+        .ptable-head .pt-hint { font-size: 14px; color: #9aa0b8; }
 
         /* 第 1 列是周期序号，第 2~19 列对应族 1~18。行高 36px：
            格子约 40×36，刚好放「左上角序号 + 居中符号」两行 */
@@ -100,7 +100,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 11px;
+            font-size: 13px;
             color: #9aa0b8;
         }
         .pt-cell {
@@ -114,7 +114,7 @@
             border-radius: 5px;
             background: #fff;
             font-family: inherit;
-            font-size: 14px;
+            font-size: 16px;
             font-weight: bold;
             color: #3a4059;
             cursor: pointer;
@@ -139,7 +139,7 @@
             color: #bcc0d0;
             cursor: default;
             font-weight: normal;
-            font-size: 12px;
+            font-size: 14px;
         }
         .pt-cell.off .pt-z { color: #c9ccd9; }
         .pt-cell.off:hover { background: #f3f4f9; border-color: #e7e9f2; }
@@ -174,7 +174,7 @@
 
         .ptable-foot {
             margin-top: 7px;
-            font-size: 11.5px;
+            font-size: 13.5px;
             color: #6b7188;
             line-height: 1.5;
         }
@@ -194,14 +194,14 @@
             padding: 16px 18px;
             background: rgba(255,255,255,0.95);
             border-radius: 10px;
-            font-size: 14px;
+            font-size: 16px;
             line-height: 1.75;
             color: #333;
             box-shadow: 0 5px 15px rgba(0,0,0,0.2);
         }
         .info strong {
             color: #667eea;
-            font-size: 19px;
+            font-size: 22px;
         }
         .electron-config {
             display: inline-block;
@@ -210,7 +210,7 @@
             padding: 4px 13px;
             border-radius: 20px;
             font-weight: bold;
-            font-size: 13px;
+            font-size: 15px;
             margin-left: 6px;
         }
         /* 周期标签：跟在元素名后面，小一号、弱化——不抢元素名的视觉，
@@ -222,7 +222,7 @@
             border-radius: 10px;
             background: #eef1ff;
             color: #667eea;
-            font-size: 12px;
+            font-size: 14px;
             font-weight: bold;
             vertical-align: 2px;
         }
@@ -230,7 +230,7 @@
             background: rgba(255,255,255,0.95);
             padding: 14px 18px;
             border-radius: 10px;
-            font-size: 13px;
+            font-size: 16px;
             color: #333;
             line-height: 1.7;
             box-shadow: 0 5px 15px rgba(0,0,0,0.2);
@@ -267,15 +267,15 @@
             border-radius: 10px;
             padding: 12px 16px;
             color: #fff;
-            font-size: 14px;
+            font-size: 15px;
             line-height: 1.7;
             box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
             white-space: nowrap;
         }
         .nucleus-tip.on { display: block; }
-        .nucleus-tip .t-title { font-weight: bold; font-size: 15px; margin-bottom: 4px; }
-        .nucleus-tip .t-num { font-weight: bold; font-size: 16px; color: #FFD166; }
-        .nucleus-tip .t-sub { color: rgba(255, 255, 255, 0.6); font-size: 12px; }
+        .nucleus-tip .t-title { font-weight: bold; font-size: 16px; margin-bottom: 4px; }
+        .nucleus-tip .t-num { font-weight: bold; font-size: 18px; color: #FFD166; }
+        .nucleus-tip .t-sub { color: rgba(255, 255, 255, 0.6); font-size: 13px; }
         .nucleus-tip sup { font-size: 0.75em; }
         .nucleus-tip i {
             display: inline-block;
@@ -295,7 +295,7 @@
             padding: 7px 16px;
             background: rgba(255,255,255,0.82);
             color: #555;
-            font-size: 13px;
+            font-size: 15px;
             border-radius: 20px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.12);
             text-decoration: none;
@@ -320,7 +320,7 @@
             padding: 8px 18px;
             background: rgba(255, 255, 255, 0.82);
             color: #555;
-            font-size: 13px;
+            font-size: 15px;
             border-radius: 20px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.12);
             backdrop-filter: blur(8px);
@@ -780,14 +780,14 @@
                 // 层数多、半径被压缩（金：间距 28px）→ 6 个层名会在右缘挤成一串
                 //   → 改为按 −70°~+70° 扇形角错开，每个层名各自落位
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-                ctx.font = '12px Arial';
+                ctx.font = '15px Arial';
                 const shellName = SHELL_NAMES[shellIndex] || `${shellIndex + 1}层`;
                 const shellCount = element.electrons.length;
                 const gap = shellCount > 1
                     ? shellRadius(1, shellCount, shellBase) - shellRadius(0, shellCount, shellBase)
                     : 0;
-                if (shellCount > 1 && gap < 34) {
-                    const ang = (-70 + (shellIndex * 140) / (shellCount - 1)) * Math.PI / 180;
+                if (shellCount > 1 && gap < 44) {
+                    const ang = (-80 + (shellIndex * 160) / (shellCount - 1)) * Math.PI / 180;
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
                     ctx.fillText(

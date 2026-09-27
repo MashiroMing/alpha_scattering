@@ -37,7 +37,7 @@
         }
         .subtitle {
             color: rgba(255,255,255,0.9);
-            font-size: 13px;
+            font-size: 16px;
             margin: 6px 0 12px;
         }
         /* 主舞台：左（画布）+ 右（控件 / 统计 / 实验说明） */
@@ -94,7 +94,7 @@
         label {
             margin-bottom: 6px;
             font-weight: bold;
-            font-size: 13px;
+            font-size: 16px;
             color: #333;
             white-space: nowrap;
         }
@@ -161,7 +161,7 @@
             border-radius: 16px;
             color: #667eea;
             font-weight: bold;
-            font-size: 13px;
+            font-size: 16px;
             text-align: center;
             transition: all 0.3s;
             user-select: none;
@@ -185,7 +185,7 @@
         }
         button {
             padding: 10px 14px;
-            font-size: 15px;
+            font-size: 16px;
             cursor: pointer;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
@@ -235,7 +235,7 @@
             background-clip: text;
         }
         .stat-label {
-            font-size: 12px;
+            font-size: 14px;
             color: #666;
             margin-top: 2px;
         }
@@ -244,7 +244,7 @@
             flex: 0 0 auto;
             display: flex;
             flex-direction: column;
-            font-size: 13px;
+            font-size: 16px;
             color: #333;
             overflow: hidden;
         }
@@ -261,7 +261,7 @@
             cursor: pointer;
             padding: 12px 16px;
             font-weight: bold;
-            font-size: 14px;
+            font-size: 17px;
             list-style: none;
             display: flex;
             align-items: center;
@@ -273,7 +273,7 @@
         .legend > summary::after {
             content: "展开 ▾";
             margin-left: auto;
-            font-size: 12px;
+            font-size: 14px;
             font-weight: normal;
             color: #8e7cc3;
         }
@@ -319,7 +319,7 @@
             padding: 8px 18px;
             background: rgba(255, 255, 255, 0.82);
             color: #555;
-            font-size: 13px;
+            font-size: 15px;
             border-radius: 20px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.12);
             font-family: "Microsoft YaHei", sans-serif;
@@ -406,7 +406,7 @@
             padding: 7px 16px;
             background: rgba(255,255,255,0.82);
             color: #555;
-            font-size: 13px;
+            font-size: 15px;
             border-radius: 20px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.12);
             text-decoration: none;
@@ -687,7 +687,7 @@
 
                 // 绘制核电荷标记
                 ctx.fillStyle = '#000';
-                ctx.font = 'bold 12px Arial';
+                ctx.font = 'bold 15px Arial';
                 ctx.textAlign = 'center';
                 ctx.fillText('+79e', nuc.x, nuc.y + 4);
             });
@@ -743,14 +743,14 @@
                 //    必须加一层深色底板 —— α 轨迹横穿这个位置，不加底板的文字会被切成碎片。
                 if (nuc === nuclei[Math.floor(nuclei.length / 2)]) {
                     const label = '+79e 均匀分布';
-                    ctx.font = 'bold 14px "Microsoft YaHei", sans-serif';
+                    ctx.font = 'bold 17px "Microsoft YaHei", sans-serif';
                     ctx.textAlign = 'left';
                     ctx.textBaseline = 'middle';
                     const lx = nuc.x + R + 22;
                     const tw = ctx.measureText(label).width;
                     ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
                     ctx.beginPath();
-                    ctx.roundRect(lx - 8, nuc.y - 13, tw + 16, 26, 7);
+                    ctx.roundRect(lx - 8, nuc.y - 16, tw + 16, 32, 7);
                     ctx.fill();
                     ctx.fillStyle = 'rgba(255, 226, 150, 0.95)';
                     ctx.fillText(label, lx, nuc.y);

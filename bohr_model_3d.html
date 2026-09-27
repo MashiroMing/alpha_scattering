@@ -1,0 +1,1150 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>玻尔原子模型 · 三维电子运动</title>
+    <style>
+        body {
+            font-family: "Microsoft YaHei", sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            min-height: 100vh;
+            /* 必须配 box-sizing：否则 min-height 不含上下各 20px padding，
+               页面总高变成 100vh + 40，明明装得下却凭空多一条滚动条 */
+            box-sizing: border-box;
+            margin: 0;
+        }
+        h1 {
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            margin: 0 0 8px;
+            font-size: 26px;
+        }
+        .subtitle {
+            color: rgba(255,255,255,0.9);
+            font-size: 16px;
+            margin-bottom: 16px;
+        }
+        #canvas {
+            border: 3px solid #fff;
+            background: radial-gradient(circle at 50% 46%, #1b1e38 0%, #0c0d1a 100%);
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            cursor: grab;
+            display: block;
+        }
+        #canvas.dragging { cursor: grabbing; }
+
+        .stage { display: flex; gap: 22px; align-items: flex-start; justify-content: center; }
+
+        /* 左列：画布 + 下方视图控制条 */
+        .left-col { display: flex; flex-direction: column; gap: 8px; }
+        .ctrl-bar {
+            width: 1006px;      /* 与画布含 3px 边框后的实际宽度对齐 */
+            box-sizing: border-box;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(255,255,255,0.95);
+            border-radius: 10px;
+            padding: 8px 14px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            font-size: 15px;
+            color: #444;
+        }
+        .ctrl-bar .sp { flex: 1 1 auto; }
+        .ctrl-bar label { display: flex; align-items: center; gap: 5px; font-weight: normal; cursor: pointer; }
+        .ctrl-bar input[type=range] { width: 110px; vertical-align: middle; }
+        .btn {
+            padding: 5px 12px;
+            border: 1px solid #c9d0ea;
+            background: #fff;
+            border-radius: 16px;
+            font-family: inherit;
+            font-size: 15px;
+            color: #4a5070;
+            cursor: pointer;
+            transition: background .15s, border-color .15s, color .15s;
+        }
+        .btn:hover { background: #eef1ff; border-color: #667eea; }
+        .btn.on { background: linear-gradient(135deg,#667eea 0%,#764ba2 100%); border-color: transparent; color: #fff; }
+
+        /* 右列 780px：与 atomic_model.html 同宽（实测上限 819，取 780 留 39px 余量）。
+           一旦超了 flex-wrap 会把整块甩到画布下方，高度直接翻倍 */
+        .right-col { width: 780px; display: flex; flex-direction: column; gap: 10px; }
+
+        .card {
+            background: rgba(255,255,255,0.95);
+            border-radius: 10px;
+            padding: 10px 12px 8px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        .card-head {
+            display: flex; align-items: baseline; justify-content: space-between;
+            margin-bottom: 6px; font-size: 15px; color: #555;
+        }
+        .card-head strong { color: #667eea; font-size: 17px; }
+        .card-head .hint { font-size: 14px; color: #9aa0b8; }
+
+        /* ── 元素周期表 ─────────────────────────────────────────────── */
+        .ptable { display: grid; grid-template-columns: 26px repeat(18, 1fr); grid-auto-rows: 25px; gap: 3px; }
+        .pt-rowlabel { display: flex; align-items: center; justify-content: center; font-size: 12.5px; color: #9aa0b8; }
+        .pt-cell {
+            position: relative; display: flex; align-items: center; justify-content: center;
+            padding: 0; margin: 0; border: 1px solid #d9def0; border-radius: 5px; background: #fff;
+            font-family: inherit; font-size: 15px; font-weight: bold; color: #3a4059;
+            cursor: pointer; transition: background .15s, border-color .15s, color .15s;
+        }
+        .pt-cell .pt-z { position: absolute; left: 3px; top: 2px; font-size: 8px; font-weight: normal; color: #98a0bb; line-height: 1; }
+        .pt-cell:hover { background: #eef1ff; border-color: #667eea; }
+        /* ↓ 三条权重相同，靠书写顺序取胜：.off → .hl → .cur 不可调换 */
+        .pt-cell.off { background: #f3f4f9; border-color: #e7e9f2; color: #bcc0d0; cursor: default; font-weight: normal; font-size: 13px; }
+        .pt-cell.off .pt-z { color: #c9ccd9; }
+        .pt-cell.off:hover { background: #f3f4f9; border-color: #e7e9f2; }
+        .pt-cell.hl { background: #eef1ff; }
+        .pt-cell.cur, .pt-cell.cur:hover {
+            background: linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+            border-color: transparent; color: #fff;
+            box-shadow: 0 2px 8px rgba(102,126,234,.45);
+        }
+        .pt-cell.cur .pt-z { color: rgba(255,255,255,.78); }
+        .pt-cell.ph { flex-direction: column; gap: 1px; background: #f7f8fc; border-style: dashed; border-color: #c9d0ea; cursor: default; }
+        .pt-cell.ph .ph-n { font-size: 9px; color: #98a0bb; line-height: 1; }
+        .pt-cell.ph .ph-t { font-size: 10px; color: #a8aec6; line-height: 1; }
+        .ptable-foot { margin-top: 7px; font-size: 13px; color: #8a90a8; }
+        .ptable-foot b { color: #667eea; }
+        .ptable-foot .sep { margin: 0 6px; color: #ccd1e2; }
+
+        /* ── 能级跃迁 + 光谱 ─────────────────────────────────────────── */
+        .spec-row { display: flex; gap: 12px; }
+        .spec-row canvas { border: 1px solid #e6e9f5; border-radius: 8px; background: #fbfbfe; }
+        .spec-ctl { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
+        .spec-ctl .btn { font-size: 14px; padding: 4px 9px; }
+        .spec-ctl .btn:disabled { opacity: .45; cursor: not-allowed; background: #f4f5fa; border-color: #dfe2ef; color: #9aa0b8; }
+        .spec-read {
+            margin-top: 8px; padding: 7px 11px; border-radius: 8px;
+            background: #f5f6ff; font-size: 14.5px; color: #4a5070; line-height: 1.6;
+        }
+        .spec-read .em { font-weight: bold; color: #667eea; }
+        .spec-read .warn { color: #b26a00; }
+
+        /* ── 信息 + 说明 并排 ─────────────────────────────────────────── */
+        .cards-row { display: flex; gap: 12px; }
+        .cards-row > * { flex: 1 1 0; min-width: 0; }
+        .info {
+            background: rgba(255,255,255,0.95);
+            border-radius: 10px; padding: 10px 13px; font-size: 16px; line-height: 1.7;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2); color: #333;
+        }
+        .info strong { color: #667eea; font-size: 20px; }
+        .info .electron-config {
+            display: inline-block;
+            background: linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+            color: #fff; padding: 2px 10px; border-radius: 20px; font-weight: bold; font-size: 14px;
+        }
+        .legend {
+            background: rgba(255,255,255,0.95);
+            border-radius: 10px; padding: 10px 13px; font-size: 15px; color: #444; line-height: 1.6;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        .legend strong { color: #667eea; }
+        .legend .caveat { margin-top: 6px; padding-top: 6px; border-top: 1px dashed #d8dced; color: #8a90a8; font-size: 13px; }
+        .shell-key { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 7px; font-size: 13px; color: #6b7290; }
+        .shell-key i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; vertical-align: -1px; }
+
+        /* ── 固定件：返回入口 + 署名（都不占布局高度）─────────────────── */
+        .home-link {
+            position: fixed; left: 20px; top: 16px;
+            padding: 7px 16px; background: rgba(255,255,255,0.82); color: #555;
+            font-size: 15px; border-radius: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.12);
+            text-decoration: none; font-family: "Microsoft YaHei", sans-serif;
+            backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+            letter-spacing: 0.3px; z-index: 1000;
+            transition: background .3s, color .3s, transform .3s;
+        }
+        .home-link:hover { background: rgba(255,255,255,0.96); color: #333; transform: translateY(-1px); }
+        .signature {
+            position: fixed; right: 20px; bottom: 15px;
+            padding: 8px 18px; background: rgba(255,255,255,0.82); color: #555;
+            font-size: 15px; border-radius: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.12);
+            backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+            user-select: none; z-index: 1000; cursor: pointer; letter-spacing: 0.3px;
+            display: flex; align-items: center; white-space: nowrap;
+            transition: background .35s ease, color .35s ease, box-shadow .35s ease, transform .35s ease;
+        }
+        .signature .author-short { display: inline-block; max-width: 80px; overflow: hidden; transition: max-width .35s ease, opacity .3s ease; }
+        .signature .author-full {
+            display: inline-block; max-width: 0; opacity: 0; margin-left: 0; overflow: hidden;
+            transition: max-width .35s ease, opacity .35s ease .05s, margin-left .35s ease;
+        }
+        .signature:hover { background: rgba(255,255,255,0.95); color: #333; box-shadow: 0 4px 14px rgba(0,0,0,0.2); transform: translateY(-1px); }
+        .signature:hover .author-full { max-width: 260px; opacity: 1; margin-left: 10px; }
+
+        @media (max-width: 1800px) {
+            .stage { flex-direction: column; align-items: center; }
+            .right-col { width: 1006px; }
+            .ctrl-bar { width: 1006px; }
+        }
+    </style>
+</head>
+<body>
+    <a class="home-link" href="index.html">← 原子探索史</a>
+    <h1>🔮 玻尔原子模型 · 三维电子运动</h1>
+    <div class="subtitle">电子在<b>不同倾斜的轨道平面</b>上绕核运动 · 定态 → 跃迁 → 氢原子线状光谱</div>
+
+    <div class="stage">
+        <div class="left-col">
+            <canvas id="canvas" width="1000" height="675"></canvas>
+            <div class="ctrl-bar">
+                <button class="btn on" id="btnSpin">⟳ 自动旋转</button>
+                <button class="btn" id="btnPause">⏸ 暂停</button>
+                <label>转速 <input type="range" id="rngSpeed" min="0" max="250" value="100"></label>
+                <label><input type="checkbox" id="chkOrbit" checked> 轨道平面</label>
+                <label><input type="checkbox" id="chkLabel" checked> 层标注</label>
+                <span class="sp"></span>
+                <span style="color:#9aa0b8">拖动画布可旋转视角</span>
+                <button class="btn" id="btnReset">重置视角</button>
+            </div>
+        </div>
+
+        <div class="right-col">
+            <!-- 元素周期表 -->
+            <div class="card">
+                <div class="card-head">
+                    <strong>元素周期表</strong>
+                    <span class="hint">点击元素 → 切换原子</span>
+                </div>
+                <div class="ptable" id="ptable"></div>
+                <div class="ptable-foot">
+                    <b>同一行</b>电子层数相同<span class="sep">·</span><b>同一主族列</b>最外层电子数相同<span class="sep">·</span>灰格为本模型暂无数据
+                </div>
+            </div>
+
+            <!-- 能级跃迁 + 光谱 -->
+            <div class="card">
+                <div class="card-head">
+                    <strong>能级跃迁 · 氢原子光谱</strong>
+                    <span class="hint" id="specHint">玻尔：定态不辐射，跃迁才发光</span>
+                </div>
+                <div class="spec-row">
+                    <canvas id="lvCanvas" width="336" height="156"></canvas>
+                    <canvas id="spCanvas" width="392" height="156"></canvas>
+                </div>
+                <div class="spec-ctl" id="specCtl">
+                    <button class="btn" data-tr="3,2">3→2 · Hα 红</button>
+                    <button class="btn" data-tr="4,2">4→2 · Hβ 青</button>
+                    <button class="btn" data-tr="5,2">5→2 · Hγ 蓝</button>
+                    <button class="btn" data-tr="6,2">6→2 · Hδ 紫</button>
+                    <button class="btn" data-tr="2,1">2→1 · 莱曼（紫外）</button>
+                    <button class="btn" data-tr="4,3">4→3 · 帕邢（红外）</button>
+                    <button class="btn" id="btnSeq">▶ 连放巴耳末四线</button>
+                </div>
+                <div class="spec-read" id="specRead"></div>
+            </div>
+
+            <div class="cards-row">
+                <div class="info" id="info"></div>
+                <div class="legend">
+                    💡 <strong>为什么是三维</strong>：每层电子各在一个<b>倾斜的轨道平面</b>上绕核运动 —— 课本上的同心圆只是它们在纸面上的投影。<br>
+                    <div class="shell-key" id="shellKey"></div>
+                    <div class="caveat">⚠️ 为便于观察，轨道半径按 n<sup>1.5</sup> 压缩绘制（真实玻尔模型为 n<sup>2</sup>），转速按 1/n<sup>1.5</sup> 递减（真实为 1/n<sup>3</sup>，外层几乎静止）。</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="signature" title="悬停查看作者信息">
+        <span class="author-short">作者</span><span class="author-full">张曾继明 · 西南大学 · © 2026</span>
+    </div>
+
+    <script>
+        /* ══════════════════════════════════════════════════════════════
+           玻尔原子模型 · 三维电子运动
+           零依赖单文件：三维数学（旋转 + 透视投影 + 深度排序）全部手写，
+           光栅化仍用 Canvas 2D —— 保持 dependencies-0 与离线可用。
+           ══════════════════════════════════════════════════════════════ */
+
+        // ── 元素数据（与 atomic_model.html 同源：前 36 号 + 金）──────────
+        const elements = {
+            'H':  {name: '氢', protons: 1,  neutrons: 0,  electrons: [1],    symbol: 'H'},
+            'He': {name: '氦', protons: 2,  neutrons: 2,  electrons: [2],    symbol: 'He'},
+            'Li': {name: '锂', protons: 3,  neutrons: 4,  electrons: [2, 1], symbol: 'Li'},
+            'Be': {name: '铍', protons: 4,  neutrons: 5,  electrons: [2, 2], symbol: 'Be'},
+            'B':  {name: '硼', protons: 5,  neutrons: 6,  electrons: [2, 3], symbol: 'B'},
+            'C':  {name: '碳', protons: 6,  neutrons: 6,  electrons: [2, 4], symbol: 'C'},
+            'N':  {name: '氮', protons: 7,  neutrons: 7,  electrons: [2, 5], symbol: 'N'},
+            'O':  {name: '氧', protons: 8,  neutrons: 8,  electrons: [2, 6], symbol: 'O'},
+            'F':  {name: '氟', protons: 9,  neutrons: 10, electrons: [2, 7], symbol: 'F'},
+            'Ne': {name: '氖', protons: 10, neutrons: 10, electrons: [2, 8], symbol: 'Ne'},
+            'Na': {name: '钠', protons: 11, neutrons: 12, electrons: [2, 8, 1], symbol: 'Na'},
+            'Mg': {name: '镁', protons: 12, neutrons: 12, electrons: [2, 8, 2], symbol: 'Mg'},
+            'Al': {name: '铝', protons: 13, neutrons: 14, electrons: [2, 8, 3], symbol: 'Al'},
+            'Si': {name: '硅', protons: 14, neutrons: 14, electrons: [2, 8, 4], symbol: 'Si'},
+            'P':  {name: '磷', protons: 15, neutrons: 16, electrons: [2, 8, 5], symbol: 'P'},
+            'S':  {name: '硫', protons: 16, neutrons: 16, electrons: [2, 8, 6], symbol: 'S'},
+            'Cl': {name: '氯', protons: 17, neutrons: 18, electrons: [2, 8, 7], symbol: 'Cl'},
+            'Ar': {name: '氩', protons: 18, neutrons: 22, electrons: [2, 8, 8], symbol: 'Ar'},
+            'K':  {name: '钾', protons: 19, neutrons: 20, electrons: [2, 8, 8, 1],  symbol: 'K'},
+            'Ca': {name: '钙', protons: 20, neutrons: 20, electrons: [2, 8, 8, 2],  symbol: 'Ca'},
+            'Sc': {name: '钪', protons: 21, neutrons: 24, electrons: [2, 8, 9, 2],  symbol: 'Sc'},
+            'Ti': {name: '钛', protons: 22, neutrons: 26, electrons: [2, 8, 10, 2], symbol: 'Ti'},
+            'V':  {name: '钒', protons: 23, neutrons: 28, electrons: [2, 8, 11, 2], symbol: 'V'},
+            'Cr': {name: '铬', protons: 24, neutrons: 28, electrons: [2, 8, 13, 1], symbol: 'Cr'},
+            'Mn': {name: '锰', protons: 25, neutrons: 30, electrons: [2, 8, 13, 2], symbol: 'Mn'},
+            'Fe': {name: '铁', protons: 26, neutrons: 30, electrons: [2, 8, 14, 2], symbol: 'Fe'},
+            'Co': {name: '钴', protons: 27, neutrons: 32, electrons: [2, 8, 15, 2], symbol: 'Co'},
+            'Ni': {name: '镍', protons: 28, neutrons: 30, electrons: [2, 8, 16, 2], symbol: 'Ni'},
+            'Cu': {name: '铜', protons: 29, neutrons: 34, electrons: [2, 8, 18, 1], symbol: 'Cu'},
+            'Zn': {name: '锌', protons: 30, neutrons: 34, electrons: [2, 8, 18, 2], symbol: 'Zn'},
+            'Ga': {name: '镓', protons: 31, neutrons: 38, electrons: [2, 8, 18, 3], symbol: 'Ga'},
+            'Ge': {name: '锗', protons: 32, neutrons: 42, electrons: [2, 8, 18, 4], symbol: 'Ge'},
+            'As': {name: '砷', protons: 33, neutrons: 42, electrons: [2, 8, 18, 5], symbol: 'As'},
+            'Se': {name: '硒', protons: 34, neutrons: 46, electrons: [2, 8, 18, 6], symbol: 'Se'},
+            'Br': {name: '溴', protons: 35, neutrons: 44, electrons: [2, 8, 18, 7], symbol: 'Br'},
+            'Kr': {name: '氪', protons: 36, neutrons: 48, electrons: [2, 8, 18, 8], symbol: 'Kr'},
+            'Au': {name: '金', protons: 79, neutrons: 118, electrons: [2, 8, 18, 32, 18, 1], symbol: 'Au'}
+        };
+
+        // ── 元素周期表骨架（长式周期表，7 周期 × 18 族）─────────────────
+        const PT_PERIODS = [
+            [['H',1,1], ['He',2,18]],
+            [['Li',3,1], ['Be',4,2], ['B',5,13], ['C',6,14], ['N',7,15], ['O',8,16], ['F',9,17], ['Ne',10,18]],
+            [['Na',11,1], ['Mg',12,2], ['Al',13,13], ['Si',14,14], ['P',15,15], ['S',16,16], ['Cl',17,17], ['Ar',18,18]],
+            [['K',19,1], ['Ca',20,2], ['Sc',21,3], ['Ti',22,4], ['V',23,5], ['Cr',24,6], ['Mn',25,7], ['Fe',26,8],
+             ['Co',27,9], ['Ni',28,10], ['Cu',29,11], ['Zn',30,12], ['Ga',31,13], ['Ge',32,14], ['As',33,15],
+             ['Se',34,16], ['Br',35,17], ['Kr',36,18]],
+            [['Rb',37,1], ['Sr',38,2], ['Y',39,3], ['Zr',40,4], ['Nb',41,5], ['Mo',42,6], ['Tc',43,7], ['Ru',44,8],
+             ['Rh',45,9], ['Pd',46,10], ['Ag',47,11], ['Cd',48,12], ['In',49,13], ['Sn',50,14], ['Sb',51,15],
+             ['Te',52,16], ['I',53,17], ['Xe',54,18]],
+            [['Cs',55,1], ['Ba',56,2],
+             ['Hf',72,4], ['Ta',73,5], ['W',74,6], ['Re',75,7], ['Os',76,8], ['Ir',77,9], ['Pt',78,10], ['Au',79,11],
+             ['Hg',80,12], ['Tl',81,13], ['Pb',82,14], ['Bi',83,15], ['Po',84,16], ['At',85,17], ['Rn',86,18]],
+            [['Fr',87,1], ['Ra',88,2],
+             ['Rf',104,4], ['Db',105,5], ['Sg',106,6], ['Bh',107,7], ['Hs',108,8], ['Mt',109,9], ['Ds',110,10],
+             ['Rg',111,11], ['Cn',112,12], ['Nh',113,13], ['Fl',114,14], ['Mc',115,15], ['Lv',116,16], ['Ts',117,17],
+             ['Og',118,18]]
+        ];
+        const PT_PLACEHOLDERS = [
+            {period: 6, col: 3, num: '57-71',  label: '镧系'},
+            {period: 7, col: 3, num: '89-103', label: '锕系'}
+        ];
+        const PT_POS = {};
+        PT_PERIODS.forEach(function (row, i) {
+            row.forEach(function (t) { PT_POS[t[0]] = {period: i + 1, col: t[2], z: t[1]}; });
+        });
+
+        // ── 三维引擎 ────────────────────────────────────────────────────
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const CW = canvas.width, CH = canvas.height;
+        const CX = CW / 2, CY = CH / 2 - 6;
+
+        const FOCAL = 1500;          // 透视焦距（px）：越大越接近正交投影
+        const RMAX  = 318;           // 最外层轨道的世界半径（再大最外层轨道会被画布上下裁掉）
+        const SEG   = 72;            // 每个轨道环的采样段数
+        const SHELL_NAMES  = ['K', 'L', 'M', 'N', 'O', 'P', 'Q'];
+        const SHELL_COLORS = ['#26C6DA', '#42A5F5', '#AB47BC', '#EC407A', '#FFA726', '#66BB6A', '#8D6E63'];
+
+        let yaw = -0.42, pitch = 0.30;        // 相机角：初始就能看出"各层不在同一平面"
+        const YAW0 = yaw, PITCH0 = pitch;
+        let autoSpin = true, paused = false, showOrbit = true, showLabel = true, speedMul = 1;
+        let simT = 0;                          // 电子公转累积时间（s）
+        let lastTs = 0;
+
+        let currentElement = 'H';
+        let rings = [];        // {n, count, r, u, v, omega, phases, color, name}
+        let refN = 6;          // 半径归一化参考层数（氢固定为 6，其余 = 电子层数）
+
+        // 向量工具
+        function cross(a, b) {
+            return {x: a.y * b.z - a.z * b.y, y: a.z * b.x - a.x * b.z, z: a.x * b.y - a.y * b.x};
+        }
+        function norm(a) {
+            const L = Math.hypot(a.x, a.y, a.z) || 1;
+            return {x: a.x / L, y: a.y / L, z: a.z / L};
+        }
+        // 第 n 层轨道平面的两个正交基向量：各层倾角/方位角都不同 —— 三维视图的要害
+        function orbitBasis(n) {
+            const th = 0.40 + 0.55 * n;                 // 倾角
+            const ph = 0.85 * n + 0.35;                 // 方位角
+            const N = norm({x: Math.sin(th) * Math.cos(ph), y: Math.cos(th), z: Math.sin(th) * Math.sin(ph)});
+            const A = Math.abs(N.y) > 0.9 ? {x: 1, y: 0, z: 0} : {x: 0, y: 1, z: 0};
+            const u = norm(cross(N, A));
+            const v = norm(cross(N, u));
+            return {u: u, v: v};
+        }
+        // 轨道半径：r ∝ n^1.5（真实为 n²，压缩后才装得下 1~6 层，已在说明里注明）
+        function orbitRadius(n) { return RMAX * Math.pow(n, 1.5) / Math.pow(refN, 1.5); }
+        // 轨道上角度 ang 处的世界坐标
+        function orbitPoint(ring, ang) {
+            const c = Math.cos(ang), s = Math.sin(ang);
+            return {
+                x: ring.r * (c * ring.u.x + s * ring.v.x),
+                y: ring.r * (c * ring.u.y + s * ring.v.y),
+                z: ring.r * (c * ring.u.z + s * ring.v.z)
+            };
+        }
+        // 世界 → 相机（先绕 Y 偏航，再绕 X 俯仰）
+        function toCam(p) {
+            const ca = Math.cos(yaw), sa = Math.sin(yaw);
+            const x1 = p.x * ca + p.z * sa;
+            const z1 = -p.x * sa + p.z * ca;
+            const cb = Math.cos(pitch), sb = Math.sin(pitch);
+            return {x: x1, y: p.y * cb - z1 * sb, z: p.y * sb + z1 * cb};
+        }
+        // 相机 → 屏幕（透视）：z 越大越远
+        function project(p) {
+            const c = toCam(p);
+            const s = FOCAL / (FOCAL + c.z);
+            return {x: CX + c.x * s, y: CY + c.y * s, s: s, z: c.z};
+        }
+        // 深度 → 明暗/粗细（0 = 最远，1 = 最近）
+        function depthDim(z) {
+            const span = RMAX * 1.05;
+            return Math.max(0, Math.min(1, (span - z) / (2 * span)));
+        }
+
+        // ── 构建当前原子的轨道层 ────────────────────────────────────────
+        function buildRings() {
+            const el = elements[currentElement];
+            // 氢：画出 n=1~6 六层（玻尔能级图的全部可见级），才能演跃迁
+            // 其余元素：只画真正被电子占据的层
+            refN = (currentElement === 'H') ? 6 : el.electrons.length;
+            rings = [];
+            for (let n = 1; n <= refN; n++) {
+                const b = orbitBasis(n);
+                // 氢只有 1 个电子，它当前在哪一层由 hydrogenLevel 决定（跃迁后会停在落点那层）
+                const count = (currentElement === 'H') ? (n === hydrogenLevel ? 1 : 0) : (el.electrons[n - 1] || 0);
+                const phases = [];
+                for (let k = 0; k < count; k++) phases.push(k * 2 * Math.PI / count);
+                rings.push({
+                    n: n, count: count, phases: phases,
+                    r: orbitRadius(n), u: b.u, v: b.v,
+                    omega: 0.95 / Math.pow(n, 1.5),           // 转速：内层快（示意，见说明）
+                    color: SHELL_COLORS[n - 1], name: SHELL_NAMES[n - 1]
+                });
+            }
+        }
+
+        // ── 跃迁动画（仅氢：玻尔公式只对氢/类氢离子严格成立）─────────────
+        const EV = 13.6;                     // 氢电离能 eV
+        const HC = 1240;                     // hc ≈ 1240 eV·nm
+        let trans = null;                    // {from,to,base,stage,t}
+        let photon = null;                   // {t, dir, lambda}
+        let litLines = {};                   // 光谱上已点亮的线：'3>2' -> true
+        let seqQueue = [], seqBusy = false;
+
+        function energyOf(n) { return -EV / (n * n); }
+        function transitionOf(hi, lo) {
+            const dE = EV * (1 / (lo * lo) - 1 / (hi * hi));   // eV，正值
+            const lam = HC / dE;                               // nm
+            return {hi: hi, lo: lo, dE: dE, lam: lam};
+        }
+        function startTransition(hi, lo) {
+            if (currentElement !== 'H') return;
+            curTr = transitionOf(hi, lo);
+            trans = {from: hi, to: lo, base: hydrogenLevel, stage: 'excite', t: 0};
+            photon = null;
+        }
+        let hydrogenLevel = 1;               // 氢的单个电子当前所在能级
+
+        // 跃迁落定后，把"被占据的层"搬到落点 —— 否则电子会瞬间弹回 n=1，
+        // 与"跃迁到 n=2 并放出 Hα"的画面对不上（会画出矛盾的两件事）
+        function applyHydrogenLevel() {
+            if (currentElement !== 'H') return;
+            rings.forEach(function (ring) {
+                const c = (ring.n === hydrogenLevel) ? 1 : 0;
+                ring.count = c;
+                ring.phases = c ? [0] : [];
+            });
+            updateInfo();
+        }
+
+        function easeInOut(t) { return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; }
+
+        function updateTrans(dt) {
+            if (!trans) return;
+            trans.t += dt;
+            if (trans.stage === 'excite' && trans.t >= 0.75) { trans.stage = 'hold'; trans.t = 0; }
+            else if (trans.stage === 'hold' && trans.t >= 0.35) { trans.stage = 'fall'; trans.t = 0; }
+            else if (trans.stage === 'fall' && trans.t >= 0.75) {
+                const tr = transitionOf(trans.from, trans.to);
+                hydrogenLevel = trans.to;
+                photon = {t: 0, lam: tr.lam, dE: tr.dE,
+                          dir: norm({x: Math.cos(yaw * 1.7), y: -0.35 + Math.sin(yaw) * 0.3, z: Math.sin(yaw * 1.3)})};
+                litLines[trans.from + '>' + trans.to] = true;
+                trans = null;
+                applyHydrogenLevel();
+                drawSpectrum();
+                drawLevels();
+                updateReadout(tr);
+            }
+            if (photon) {
+                photon.t += dt;
+                if (photon.t > 1.15) photon = null;      // 队列由 pumpSeq() 在下一帧推进
+            }
+        }
+        // 连放队列（每次只推进一个）
+        function pumpSeq() {
+            if (!seqBusy || trans || photon) return;
+            if (seqQueue.length === 0) { seqBusy = false; return; }
+            const nxt = seqQueue.shift();
+            startTransition(nxt.hi, nxt.lo);
+        }
+
+        // 电子在"跃迁中"的位置：在两层轨道间螺旋过渡
+        function transElectronPoint() {
+            if (!trans) return null;
+            const rA = rings[trans.stage === 'fall' ? trans.from - 1 : trans.base - 1];
+            const rB = rings[trans.stage === 'fall' ? trans.to - 1 : trans.from - 1];
+            if (!rA || !rB) return null;
+            const dur = (trans.stage === 'hold') ? 1 : 0.75;
+            const k = (trans.stage === 'hold') ? 1 : easeInOut(Math.min(1, trans.t / dur));
+            const ang = simT * 2.2 + k * 8.0;                  // 螺旋：边升/降边转
+            const pa = orbitPoint(rA, ang), pb = orbitPoint(rB, ang);
+            return {x: pa.x + (pb.x - pa.x) * k, y: pa.y + (pb.y - pa.y) * k, z: pa.z + (pb.z - pa.z) * k};
+        }
+
+        // ── 绘制 ────────────────────────────────────────────────────────
+        function drawBackground() {
+            ctx.clearRect(0, 0, CW, CH);
+            // 淡淡的球面网格，帮助读出"这是三维空间"
+            ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+            ctx.lineWidth = 1;
+            for (let i = 1; i <= 3; i++) {
+                ctx.beginPath();
+                ctx.ellipse(CX, CY, RMAX * i / 3, RMAX * i / 3 * 0.34, 0, 0, 6.2832);
+                ctx.stroke();
+            }
+            ctx.beginPath(); ctx.moveTo(CX - RMAX, CY); ctx.lineTo(CX + RMAX, CY); ctx.stroke();
+        }
+
+        function drawNucleus() {
+            const el = elements[currentElement];
+            const A = el.protons + el.neutrons;
+            const p = project({x: 0, y: 0, z: 0});
+            const R = (10 + 1.8 * Math.cbrt(A)) * p.s;
+            const g = ctx.createRadialGradient(p.x - R * 0.3, p.y - R * 0.35, R * 0.12, p.x, p.y, R);
+            g.addColorStop(0, '#ffe0b2'); g.addColorStop(0.45, '#ff8a65'); g.addColorStop(1, '#b71c1c');
+            ctx.fillStyle = g;
+            ctx.beginPath(); ctx.arc(p.x, p.y, R, 0, 6.2832); ctx.fill();
+            ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 1.2; ctx.stroke();
+            ctx.font = 'bold 16px "Microsoft YaHei", sans-serif';
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillStyle = '#ffd9a0';
+            ctx.fillText('+' + el.protons + 'e', p.x, p.y + R + 16);
+        }
+
+        function drawPhoton() {
+            if (!photon) return;
+            const k = photon.t / 1.15;
+            const d = photon.dir;
+            const dist = RMAX * (0.25 + 1.5 * k);
+            // 沿方向画一段正弦波（光子的示意画法）
+            const pts = [];
+            for (let i = 0; i <= 26; i++) {
+                const u = (i / 26) * 46;                      // 波长长度（px）
+                const off = Math.sin(i / 26 * 6.2832 * 3) * 7 * (1 - k * 0.4);
+                const distI = dist - 23 + (i / 26) * 46;
+                const w = {
+                    x: d.x * distI - d.z * off * 0.6,
+                    y: d.y * distI + off,
+                    z: d.z * distI + d.x * off * 0.6
+                };
+                pts.push(project(w));
+            }
+            ctx.globalAlpha = Math.max(0, 1 - k * 0.85);
+            ctx.strokeStyle = wavelengthToRGB(photon.lam);
+            ctx.lineWidth = 2.4;
+            ctx.beginPath();
+            pts.forEach(function (q, i) { i ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y); });
+            ctx.stroke();
+            // 箭头
+            const a = pts[pts.length - 1], b = pts[pts.length - 3];
+            const ang = Math.atan2(a.y - b.y, a.x - b.x);
+            ctx.fillStyle = wavelengthToRGB(photon.lam);
+            ctx.beginPath();
+            ctx.moveTo(a.x, a.y);
+            ctx.lineTo(a.x - 9 * Math.cos(ang - 0.4), a.y - 9 * Math.sin(ang - 0.4));
+            ctx.lineTo(a.x - 9 * Math.cos(ang + 0.4), a.y - 9 * Math.sin(ang + 0.4));
+            ctx.closePath(); ctx.fill();
+            ctx.globalAlpha = 1;
+            // 标签
+            ctx.font = 'bold 15px "Microsoft YaHei", sans-serif';
+            ctx.fillStyle = '#fff'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+            ctx.fillText('光子 λ = ' + photon.lam.toFixed(0) + ' nm', a.x + 12, a.y);
+        }
+
+        // 波长 → 颜色（可见光近似）
+        function wavelengthToRGB(nm) {
+            let r = 0, g = 0, b = 0;
+            if (nm < 440) { r = -(nm - 440) / 60; b = 1; }
+            else if (nm < 490) { g = (nm - 440) / 50; b = 1; }
+            else if (nm < 510) { g = 1; b = -(nm - 510) / 20; }
+            else if (nm < 580) { r = (nm - 510) / 70; g = 1; }
+            else if (nm < 645) { r = 1; g = -(nm - 645) / 65; }
+            else { r = 1; }
+            let f = 1;
+            if (nm < 420) f = 0.3 + 0.7 * (nm - 380) / 40;
+            else if (nm > 700) f = 0.3 + 0.7 * (780 - nm) / 80;
+            const c = function (v) { return Math.round(255 * Math.pow(Math.max(0, Math.min(1, v * f)), 0.8)); };
+            return 'rgb(' + c(r) + ',' + c(g) + ',' + c(b) + ')';
+        }
+
+        function draw() {
+            drawBackground();
+            const items = [];
+
+            // 空能级（氢：n≥2 尚未被占据的层）画成虚线圆
+            rings.forEach(function (ring) {
+                if (!showOrbit) return;
+                const isEmpty = ring.count === 0;
+                for (let i = 0; i < SEG; i++) {
+                    const a0 = i / SEG * 6.2832, a1 = (i + 1) / SEG * 6.2832;
+                    const p0 = project(orbitPoint(ring, a0));
+                    const p1 = project(orbitPoint(ring, a1));
+                    const zm = (p0.z + p1.z) / 2;
+                    const dim = depthDim(zm);
+                    items.push({z: zm, f: function () {
+                        ctx.globalAlpha = isEmpty ? (0.18 + 0.34 * dim) : (0.22 + 0.55 * dim);
+                        ctx.strokeStyle = isEmpty ? '#9aa3c4' : ring.color;
+                        ctx.lineWidth = (isEmpty ? 1.0 : 1.1) + 0.8 * dim;
+                        if (isEmpty) ctx.setLineDash([4, 4]);
+                        ctx.beginPath(); ctx.moveTo(p0.x, p0.y); ctx.lineTo(p1.x, p1.y); ctx.stroke();
+                        ctx.setLineDash([]);
+                        ctx.globalAlpha = 1;
+                    }});
+                }
+            });
+
+            // 电子
+            rings.forEach(function (ring) {
+                const skip = (currentElement === 'H') && trans;   // 氢在跃迁中由 transElectronPoint 单独画
+                for (let k = 0; k < ring.count; k++) {
+                    if (skip && ring.n === trans.base) continue;
+                    const ang = ring.phases[k] + ring.omega * simT;
+                    const p = project(orbitPoint(ring, ang));
+                    const dim = depthDim(p.z);
+                    items.push({z: p.z, f: function () {
+                        const r = 4.5 * p.s;
+                        ctx.globalAlpha = 0.22 * dim;
+                        ctx.fillStyle = ring.color;
+                        ctx.beginPath(); ctx.arc(p.x, p.y, r * 2.3, 0, 6.2832); ctx.fill();
+                        ctx.globalAlpha = 1;
+                        ctx.fillStyle = '#f2f9ff';
+                        ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, 6.2832); ctx.fill();
+                        ctx.globalAlpha = 0.35 + 0.6 * dim;
+                        ctx.strokeStyle = ring.color; ctx.lineWidth = 1.6; ctx.stroke();
+                        ctx.globalAlpha = 1;
+                    }});
+                }
+            });
+
+            // 跃迁中的电子（氢）
+            const tp = transElectronPoint();
+            if (tp) {
+                const p = project(tp);
+                const dim = depthDim(p.z);
+                const col = trans.stage === 'fall' ? '#FFD166' : '#7EE8FA';
+                items.push({z: p.z, f: function () {
+                    const r = 5.2 * p.s;
+                    ctx.globalAlpha = 0.3 * dim;
+                    ctx.fillStyle = col;
+                    ctx.beginPath(); ctx.arc(p.x, p.y, r * 2.6, 0, 6.2832); ctx.fill();
+                    ctx.globalAlpha = 1;
+                    ctx.fillStyle = '#fff';
+                    ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, 6.2832); ctx.fill();
+                    ctx.strokeStyle = col; ctx.lineWidth = 1.8; ctx.stroke();
+                    ctx.font = 'bold 14px "Microsoft YaHei", sans-serif';
+                    ctx.fillStyle = col; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                    ctx.fillText(trans.stage === 'excite' ? '激发中 ↑' : (trans.stage === 'hold' ? '激发态 n=' + trans.from : '跃迁 ↓'),
+                                 p.x, p.y - r - 12);
+                }});
+            }
+
+            items.push({z: 0, f: drawNucleus});
+            if (photon) items.push({z: -RMAX * 2, f: drawPhoton});   // 光子始终画在最前
+
+            // 画家算法：远的先画
+            items.sort(function (a, b) { return b.z - a.z; });
+            items.forEach(function (it) { it.f(); });
+
+            if (showLabel) drawRingLabels();
+            drawCornerNote();
+        }
+
+        function drawRingLabels() {
+            ctx.font = 'bold 14px "Microsoft YaHei", sans-serif';
+            ctx.textBaseline = 'middle';
+            // 取每环投影后最靠右的采样点作为锚点
+            const marks = rings.map(function (ring) {
+                let best = null;
+                for (let i = 0; i < 36; i++) {
+                    const q = project(orbitPoint(ring, i / 36 * 6.2832));
+                    if (!best || q.x > best.x) best = q;
+                }
+                return {ring: ring, x: best.x, y: best.y};
+            });
+            // 纵向去重叠：小半径的几层锚点会挤在一起（K/L/M 实测只差几像素），
+            // 按 y 排序后强制最小间距，读起来才是"一层一行"
+            marks.sort(function (a, b) { return a.y - b.y; });
+            const MIN_GAP = 22;
+            for (let i = 1; i < marks.length; i++) {
+                if (marks[i].y - marks[i - 1].y < MIN_GAP) marks[i].y = marks[i - 1].y + MIN_GAP;
+            }
+            marks.forEach(function (m) {
+                const ring = m.ring;
+                const txt = ring.count > 0
+                    ? (ring.name + '层 n=' + ring.n + ' · ' + ring.count + 'e')
+                    : ('n=' + ring.n + ' 空');
+                const w = ctx.measureText(txt).width + 14;
+                const x = Math.min(m.x + 12, CW - w - 6);
+                const y = Math.max(16, Math.min(CH - 16, m.y));
+                ctx.globalAlpha = ring.count > 0 ? 0.95 : 0.5;
+                ctx.fillStyle = 'rgba(12,14,30,0.72)';
+                roundRect(x, y - 10, w, 20, 10); ctx.fill();
+                ctx.strokeStyle = ring.count > 0 ? ring.color : 'rgba(160,168,196,0.6)';
+                ctx.lineWidth = 1; ctx.stroke();
+                ctx.fillStyle = ring.count > 0 ? '#fff' : '#aab0c8';
+                ctx.textAlign = 'left';
+                ctx.fillText(txt, x + 7, y + 1);
+                ctx.globalAlpha = 1;
+            });
+        }
+
+        function drawCornerNote() {
+            ctx.font = '15px "Microsoft YaHei", sans-serif';
+            ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+            ctx.fillStyle = 'rgba(255,255,255,0.45)';
+            ctx.fillText(currentElement === 'H'
+                ? '拖动旋转 · 各层轨道平面互不相同（虚线 = 尚未占据的空能级）'
+                : '拖动旋转 · 各层轨道平面互不相同', 14, CH - 14);
+            ctx.textAlign = 'right';
+            ctx.fillText(elements[currentElement].name + '（' + currentElement + '）· ' +
+                         rings.filter(function (r) { return r.count > 0; }).length + ' 个电子层', CW - 14, CH - 14);
+        }
+
+        function roundRect(x, y, w, h, r) {
+            ctx.beginPath();
+            ctx.moveTo(x + r, y);
+            ctx.arcTo(x + w, y, x + w, y + h, r);
+            ctx.arcTo(x + w, y + h, x, y + h, r);
+            ctx.arcTo(x, y + h, x, y, r);
+            ctx.arcTo(x, y, x + w, y, r);
+            ctx.closePath();
+        }
+
+        // ── 能级图（lvCanvas）────────────────────────────────────────────
+        const lv = document.getElementById('lvCanvas'), lcx = lv.getContext('2d');
+        // 能级线的纵向位置：按 −Eₙ/EV = 1/n² 的真实比例定位，再自上（n=6）往下逐个
+        // 施加最小行距 GAP。真实比例下 n≥3 只剩 3~5px 行距，12px 的标签必然糊成一团；
+        // 撑开后 n=2~6 均匀铺开，n=1 仍停在真实位置（底部）—— 基态与激发态之间那条
+        // 远大于激发态彼此之间的大空隙反而被画了出来，与 Eₙ = −13.6/n² 的结论一致。
+        const LV_TOP = 32, LV_GAP = 16;
+        const LV_BOT = lv.height - 26;          // 与画布高绑死：改 height 时不必再同步
+        const LV_Y = (function () {
+            const raw = function (n) { return LV_TOP + (1 / (n * n)) * (LV_BOT - LV_TOP); };
+            const ys = {};
+            for (let n = 6; n >= 1; n--) {
+                ys[n] = (n === 6) ? raw(6) : Math.max(raw(n), ys[n + 1] + LV_GAP);
+            }
+            return ys;
+        })();
+
+        function drawLevels() {
+            const W = lv.width, H = lv.height;
+            const X_LINE = 84;          // 能级线左端：左侧 84px 留给「n=」与能量数值两列标签
+            lcx.clearRect(0, 0, W, H);
+            lcx.textBaseline = 'middle';
+
+            lcx.font = '12px "Microsoft YaHei", sans-serif';
+            lcx.fillStyle = '#667eea'; lcx.textAlign = 'left';
+            lcx.fillText('氢原子能级  Eₙ = −13.6/n² eV', 8, 12);
+
+            // 电离极限
+            lcx.setLineDash([3, 3]);
+            lcx.strokeStyle = '#c9cede'; lcx.lineWidth = 1;
+            lcx.beginPath(); lcx.moveTo(X_LINE, LV_TOP - 8); lcx.lineTo(W - 8, LV_TOP - 8); lcx.stroke();
+            lcx.setLineDash([]);
+            lcx.fillStyle = '#a8aec6'; lcx.textAlign = 'right';
+            lcx.fillText('E = 0 电离', W - 10, LV_TOP - 16);
+
+            const occupied = elements[currentElement].electrons.length;
+            for (let n = 1; n <= 6; n++) {
+                const y = LV_Y[n];
+                const has = n <= occupied && currentElement !== 'H';
+                const isGround = (currentElement === 'H' && n === 1);
+                const solid = has || isGround;
+                lcx.strokeStyle = solid ? SHELL_COLORS[n - 1] : '#d3d7e6';
+                lcx.lineWidth = solid ? 2 : 1;
+                if (!solid) lcx.setLineDash([3, 3]);
+                lcx.beginPath(); lcx.moveTo(X_LINE, y); lcx.lineTo(W - 8, y); lcx.stroke();
+                lcx.setLineDash([]);
+                lcx.font = '12px "Microsoft YaHei", sans-serif';
+                lcx.fillStyle = solid ? '#4a5070' : '#b0b6cc';
+                lcx.textAlign = 'left';
+                lcx.fillText('n=' + n, 6, y);
+                lcx.font = '11.5px "Microsoft YaHei", sans-serif';
+                lcx.textAlign = 'right';
+                lcx.fillStyle = solid ? '#6b7290' : '#b8bdcf';
+                lcx.fillText(energyOf(n).toFixed(2), 78, y);
+                if (solid) {
+                    lcx.fillStyle = SHELL_COLORS[n - 1];
+                    lcx.beginPath(); lcx.arc(X_LINE + 6, y, 3, 0, 6.2832); lcx.fill();
+                }
+            }
+
+            // 跃迁箭头（跃迁进行中读 trans；光子飞出阶段 trans 已清空，退回读 curTr，
+            // 否则箭头发光前后会闪一下消失）
+            const arrow = trans ? transitionOf(trans.from, trans.to) : curTr;
+            if (arrow) {
+                const tr = arrow;
+                const y1 = LV_Y[tr.hi], y2 = LV_Y[tr.lo];
+                lcx.strokeStyle = '#FFB300'; lcx.fillStyle = '#FFB300'; lcx.lineWidth = 2;
+                const x = W - 46;
+                lcx.beginPath(); lcx.moveTo(x, y1); lcx.lineTo(x, y2 - 6); lcx.stroke();
+                lcx.beginPath();
+                lcx.moveTo(x, y2);
+                lcx.lineTo(x - 4.5, y2 - 8);
+                lcx.lineTo(x + 4.5, y2 - 8);
+                lcx.closePath(); lcx.fill();
+                lcx.font = '11.5px "Microsoft YaHei", sans-serif';
+                lcx.textAlign = 'right';
+                lcx.fillText('ΔE=' + tr.dE.toFixed(2) + ' eV', x - 8, (y1 + y2) / 2);
+            }
+            if (currentElement !== 'H') {
+                lcx.fillStyle = 'rgba(255,255,255,0.86)';
+                lcx.fillRect(4, 4, W - 8, H - 8);
+                lcx.fillStyle = '#8a90a8'; lcx.textAlign = 'center';
+                lcx.font = '13.5px "Microsoft YaHei", sans-serif';
+                lcx.fillText('Eₙ = −13.6/n² 只对氢严格成立', W / 2, H / 2 - 10);
+                lcx.fillText('切回氢可查看跃迁与光谱', W / 2, H / 2 + 10);
+            }
+        }
+
+        // ── 光谱条（spCanvas）────────────────────────────────────────────
+        const sp = document.getElementById('spCanvas'), scx = sp.getContext('2d');
+        const BALMER = [[3, 2], [4, 2], [5, 2], [6, 2]];
+        const OTHER  = [[2, 1], [4, 3]];
+        let curTr = null;
+        function drawSpectrum() {
+            const W = sp.width, H = sp.height;
+            const x0 = 10, x1 = W - 10, y0 = 34, y1 = 84;
+            const NM0 = 350, NM1 = 800;
+            const xOf = function (nm) { return x0 + (nm - NM0) / (NM1 - NM0) * (x1 - x0); };
+            scx.clearRect(0, 0, W, H);
+            scx.font = '12.5px "Microsoft YaHei", sans-serif';
+            scx.textBaseline = 'middle';
+
+            scx.font = '12px "Microsoft YaHei", sans-serif';
+            scx.fillStyle = '#667eea'; scx.textAlign = 'left';
+            scx.fillText('氢原子发射光谱（nm）', 8, 11);
+
+            // 可见光带
+            for (let px = x0; px < x1; px++) {
+                const nm = NM0 + (px - x0) / (x1 - x0) * (NM1 - NM0);
+                scx.fillStyle = wavelengthToRGB(nm);
+                scx.fillRect(px, y0, 1, y1 - y0);
+            }
+            scx.strokeStyle = 'rgba(0,0,0,0.18)'; scx.lineWidth = 1;
+            scx.strokeRect(x0, y0, x1 - x0, y1 - y0);
+            scx.fillStyle = 'rgba(255,255,255,0.9)';
+            scx.fillRect(x0, y0, xOf(400) - x0, y1 - y0);          // 紫外区压暗
+            scx.fillRect(xOf(700), y0, x1 - xOf(700), y1 - y0);    // 红外区压暗
+            scx.fillStyle = '#8a90a8'; scx.textAlign = 'center';
+            scx.fillText('紫外', (x0 + xOf(400)) / 2, (y0 + y1) / 2);
+            scx.fillText('红外', (xOf(700) + x1) / 2, (y0 + y1) / 2);
+
+            // 刻度
+            scx.fillStyle = '#8a90a8'; scx.textAlign = 'center';
+            [400, 500, 600, 700].forEach(function (nm) {
+                const x = xOf(nm);
+                scx.fillRect(x - 0.5, y1, 1, 4);
+                scx.fillText(nm, x, y1 + 12);
+            });
+
+            // 谱线：先把线画完（收集标签），标签统一摆位后再描
+            const labels = [];
+            const drawLine = function (pair) {
+                const tr = transitionOf(pair[0], pair[1]);
+                const x = xOf(tr.lam);
+                const lit = !!litLines[pair[0] + '>' + pair[1]];
+                const isCur = curTr && curTr.hi === pair[0] && curTr.lo === pair[1];
+                const col = wavelengthToRGB(tr.lam);
+                scx.globalAlpha = lit ? 1 : 0.32;
+                if (isCur) {
+                    scx.globalAlpha = 1;
+                    scx.fillStyle = 'rgba(255,255,255,0.95)';
+                    scx.fillRect(x - 3, y0 - 4, 6, y1 - y0 + 8);
+                }
+                scx.strokeStyle = col; scx.lineWidth = isCur ? 4 : 2.5;
+                scx.beginPath(); scx.moveTo(x, y0 - (isCur ? 5 : 0)); scx.lineTo(x, y1 + (isCur ? 5 : 0)); scx.stroke();
+                scx.globalAlpha = 1;
+                labels.push({x: x, txt: pair[0] + '→' + pair[1], lit: lit, isCur: isCur});
+            };
+            BALMER.forEach(drawLine);
+            OTHER.forEach(drawLine);
+
+            // 标签摆位：410.2 与 434.0 两条只隔约 20px，而 11px 的标签宽约 33px，
+            // 各就各位必然叠字。故从右往左排，位置不够就把标签整体左让，
+            // 再补一条细引线指回它自己的那条谱线（防止看错归属）。
+            const LY = 24;
+            let edge = x1;
+            labels.sort(function (a, b) { return b.x - a.x; }).forEach(function (L) {
+                // 莱曼 2→1（121.6 nm）与帕邢 4→3（1875 nm）在本图的 350–800 nm 之外：
+                // 谱线本身画在画布外看不见，标签也必须一起跳过 —— 否则会被避让逻辑
+                // 钳进边界内侧，凭空造成"这条线就在这里"的错觉。
+                if (L.x < x0 || L.x > x1) return;
+                scx.font = (L.isCur ? 'bold ' : '') + '11px "Microsoft YaHei", sans-serif';
+                const half = scx.measureText(L.txt).width / 2;
+                let cx = L.x;
+                if (cx + half > edge - 4) cx = edge - 4 - half;
+                if (Math.abs(cx - L.x) > 0.5) {
+                    scx.globalAlpha = L.lit ? 0.75 : 0.4;
+                    scx.strokeStyle = '#b8bdcf'; scx.lineWidth = 1;
+                    scx.beginPath();
+                    scx.moveTo(cx + half, LY);
+                    scx.lineTo(L.x, y0 - 5);
+                    scx.stroke();
+                }
+                scx.globalAlpha = L.lit ? 1 : 0.5;
+                scx.fillStyle = L.isCur ? '#333' : '#6b7290';
+                scx.textAlign = 'center';
+                scx.fillText(L.txt, cx, LY);
+                edge = cx - half;
+            });
+            scx.globalAlpha = 1;
+            scx.font = '12.5px "Microsoft YaHei", sans-serif';
+
+            scx.fillStyle = '#8a90a8'; scx.textAlign = 'left'; scx.font = '11.5px "Microsoft YaHei", sans-serif';
+            scx.fillText('巴耳末系（→n=2）四条正好落在可见光区 —— 这就是肉眼能看见的氢的四条亮线', 8, H - 8);
+        }
+
+        // ── 读数 ────────────────────────────────────────────────────────
+        function updateReadout(tr) {
+            const el = document.getElementById('specRead');
+            if (currentElement !== 'H') {
+                el.innerHTML = '<span class="warn">⚠️ 玻尔能级公式 Eₙ = −13.6/n² eV 只对<b>氢（及类氢离子）</b>严格成立。</span>' +
+                               '当前元素仅展示<b>分层结构</b>；切回<b>氢</b>可演示跃迁与线状光谱。';
+                return;
+            }
+            if (!tr) {
+                el.innerHTML = '点击上方按钮：电子先被<b>激发</b>到高能级，再<b>跃迁</b>回低能级，' +
+                               '差值以一个光子放出 —— <span class="em">E = hν = hc/λ</span>。';
+                return;
+            }
+            const band = tr.lam >= 400 && tr.lam <= 700 ? '可见光' : (tr.lam < 400 ? '紫外（不可见）' : '红外（不可见）');
+            el.innerHTML = 'n = ' + tr.hi + ' → n = ' + tr.lo +
+                '　ΔE = <span class="em">' + tr.dE.toFixed(3) + ' eV</span>' +
+                '　λ = hc/ΔE = <span class="em">' + tr.lam.toFixed(1) + ' nm</span>' +
+                '　（' + band + (tr.lo === 2 ? '，巴耳末系' : (tr.lo === 1 ? '，莱曼系' : '，帕邢系')) + '）';
+        }
+
+        // ── 信息面板 ────────────────────────────────────────────────────
+        function updateInfo() {
+            const el = elements[currentElement];
+            const cfg = el.electrons.join(', ');
+            const total = el.electrons.reduce(function (a, b) { return a + b; }, 0);
+            const occ = el.electrons.length;
+            document.getElementById('info').innerHTML =
+                '<strong>' + el.name + '（' + el.symbol + '）</strong><br>' +
+                '原子序数: ' + el.protons + ' = 质子数 = 核外电子数<br>' +
+                '电子排布: <span class="electron-config">' + cfg + '</span><br>' +
+                '电子层: ' + occ + ' 层（' + el.electrons.map(function (_, i) { return SHELL_NAMES[i]; }).join('、') + '）<br>' +
+                '原子核: ' + el.protons + ' 个质子（+' + el.protons + 'e）<br>' +
+                '核外共 ' + total + ' 个电子';
+            const key = document.getElementById('shellKey');
+            key.innerHTML = rings.filter(function (r) { return r.count > 0; }).map(function (r) {
+                return '<span><i style="background:' + r.color + '"></i>' + r.name + ' 层 n=' + r.n + '（' + r.count + 'e）</span>';
+            }).join('');
+        }
+
+        // ── 周期表 ──────────────────────────────────────────────────────
+        let ptCells = [];
+        function buildPeriodicTable() {
+            const grid = document.getElementById('ptable');
+            grid.innerHTML = '';
+            ptCells = [];
+            for (let p = 1; p <= 7; p++) {
+                const lab = document.createElement('div');
+                lab.className = 'pt-rowlabel'; lab.textContent = p;
+                lab.style.gridArea = p + ' / 1';
+                grid.appendChild(lab);
+            }
+            PT_PLACEHOLDERS.forEach(function (ph) {
+                const d = document.createElement('div');
+                d.className = 'pt-cell ph';
+                d.style.gridArea = ph.period + ' / ' + (ph.col + 1);
+                d.dataset.period = ph.period; d.dataset.col = ph.col;
+                d.title = ph.label + '：原子序数 ' + ph.num + '（共 15 个元素，未逐个展开）';
+                d.innerHTML = '<span class="ph-n">' + ph.num + '</span><span class="ph-t">' + ph.label + '</span>';
+                grid.appendChild(d); ptCells.push(d);
+            });
+            PT_PERIODS.forEach(function (row, i) {
+                const period = i + 1;
+                row.forEach(function (t) {
+                    const sym = t[0], z = t[1], col = t[2];
+                    const has = !!elements[sym];
+                    const cell = document.createElement(has ? 'button' : 'div');
+                    cell.className = 'pt-cell' + (has ? '' : ' off');
+                    cell.style.gridArea = period + ' / ' + (col + 1);
+                    cell.dataset.period = period; cell.dataset.col = col;
+                    cell.innerHTML = '<span class="pt-z">' + z + '</span>' + sym;
+                    if (has) {
+                        cell.type = 'button';
+                        cell.dataset.sym = sym;
+                        cell.title = elements[sym].name + '（' + sym + '）· ' + z + ' 号元素 · 第 ' + period + ' 周期';
+                    } else {
+                        cell.title = sym + ' · ' + z + ' 号元素（本模型暂无数据）';
+                    }
+                    grid.appendChild(cell); ptCells.push(cell);
+                });
+            });
+        }
+        function updateTableHighlight() {
+            const pos = PT_POS[currentElement];
+            ptCells.forEach(function (cell) {
+                const on = !!pos && (+cell.dataset.period === pos.period || +cell.dataset.col === pos.col);
+                cell.classList.toggle('hl', on);
+                cell.classList.toggle('cur', cell.dataset.sym === currentElement);
+            });
+        }
+        document.getElementById('ptable').addEventListener('click', function (ev) {
+            const btn = ev.target.closest('.pt-cell[data-sym]');
+            if (btn) selectElement(btn.dataset.sym);
+        });
+
+        function selectElement(sym) {
+            if (!elements[sym]) return;
+            currentElement = sym;
+            hydrogenLevel = (sym === 'H') ? 1 : 1;
+            trans = null; photon = null; litLines = {}; curTr = null; seqQueue = []; seqBusy = false;
+            buildRings();
+            updateTableHighlight();
+            updateInfo();
+            drawLevels(); drawSpectrum(); updateReadout(null);
+            updateSpecButtons();
+        }
+
+        function updateSpecButtons() {
+            const isH = (currentElement === 'H');
+            Array.prototype.forEach.call(document.querySelectorAll('#specCtl .btn[data-tr]'), function (b) {
+                b.disabled = !isH;
+            });
+            document.getElementById('btnSeq').disabled = !isH;
+            document.getElementById('specHint').textContent = isH
+                ? '玻尔：定态不辐射，跃迁才发光'
+                : '仅氢可演示跃迁';
+        }
+
+        // ── 交互 ────────────────────────────────────────────────────────
+        document.getElementById('specCtl').addEventListener('click', function (ev) {
+            const b = ev.target.closest('.btn[data-tr]');
+            if (!b || b.disabled) return;
+            const parts = b.dataset.tr.split(',').map(Number);
+            curTr = transitionOf(parts[0], parts[1]);
+            litLines = {};                      // 单选时只点亮当前这条
+            litLines[parts[0] + '>' + parts[1]] = true;
+            startTransition(parts[0], parts[1]);
+            drawSpectrum(); drawLevels(); updateReadout(curTr);
+        });
+        document.getElementById('btnSeq').addEventListener('click', function () {
+            if (currentElement !== 'H') return;
+            litLines = {};
+            seqQueue = BALMER.map(function (p) { return {hi: p[0], lo: p[1]}; });
+            seqBusy = true;
+            pumpSeq();
+        });
+
+        let dragging = false, lastX = 0, lastY = 0;
+        canvas.addEventListener('mousedown', function (e) {
+            dragging = true; lastX = e.clientX; lastY = e.clientY;
+            canvas.classList.add('dragging');
+        });
+        window.addEventListener('mousemove', function (e) {
+            if (!dragging) return;
+            yaw += (e.clientX - lastX) * 0.006;
+            pitch += (e.clientY - lastY) * 0.006;
+            pitch = Math.max(-1.25, Math.min(1.25, pitch));
+            lastX = e.clientX; lastY = e.clientY;
+        });
+        window.addEventListener('mouseup', function () { dragging = false; canvas.classList.remove('dragging'); });
+
+        document.getElementById('btnSpin').addEventListener('click', function () {
+            autoSpin = !autoSpin;
+            this.classList.toggle('on', autoSpin);
+        });
+        document.getElementById('btnPause').addEventListener('click', function () {
+            paused = !paused;
+            this.classList.toggle('on', paused);
+            this.textContent = paused ? '▶ 继续' : '⏸ 暂停';
+        });
+        document.getElementById('rngSpeed').addEventListener('input', function () {
+            speedMul = this.value / 100;
+        });
+        document.getElementById('chkOrbit').addEventListener('change', function () { showOrbit = this.checked; });
+        document.getElementById('chkLabel').addEventListener('change', function () { showLabel = this.checked; });
+        document.getElementById('btnReset').addEventListener('click', function () {
+            yaw = YAW0; pitch = PITCH0;
+        });
+
+        // ── 主循环 ──────────────────────────────────────────────────────
+        function frame(ts) {
+            const dt = lastTs ? Math.min(0.05, (ts - lastTs) / 1000) : 0;
+            lastTs = ts;
+            if (!paused) {
+                simT += dt * speedMul;
+                if (autoSpin && !dragging) yaw += dt * 0.28;
+                updateTrans(dt);
+                if (photon) { /* 光子在 updateTrans 里推进 */ }
+                pumpSeq();
+            }
+            draw();
+            requestAnimationFrame(frame);
+        }
+
+        // ── 初始化 ──────────────────────────────────────────────────────
+        (function applyUrlElement() {
+            const m = location.search.match(/[?&]element=([A-Za-z]{1,2})\b/) ||
+                      location.hash.match(/^#([A-Za-z]{1,2})$/);
+            if (!m) return;
+            const sym = m[1].charAt(0).toUpperCase() + m[1].slice(1).toLowerCase();
+            if (elements[sym]) currentElement = sym;
+        })();
+
+        buildPeriodicTable();
+        selectElement(currentElement);
+        requestAnimationFrame(frame);
+
+        // 探针挂钩（无头验证用）
+        window.__bohr = {
+            get element() { return currentElement; },
+            get elements() { return elements; },   // const 声明不会挂到 window，探针从这里取
+            get rings() { return rings; },
+            get refN() { return refN; },
+            get trans() { return trans; },
+            get photon() { return photon; },
+            get lit() { return litLines; },
+            get level() { return hydrogenLevel; },
+            get occupied() {                                  // 当前被电子占据的层号
+                const r = rings.filter(function (x) { return x.count > 0; });
+                return r.map(function (x) { return x.n; });
+            },
+            select: selectElement,
+            transition: startTransition,
+            radiusOf: function (n) { return orbitRadius(n); },
+            energyOf: energyOf,
+            transitionOf: transitionOf,
+            setView: function (y, p) { yaw = y; pitch = p; },
+            probeProject: function (z) { return project({x: 0, y: 0, z: z}); },
+            levelY: function (n) { return LV_Y[n]; },       // 能级线纵坐标（标签避让后）
+            normalOf: function (i) { return norm(cross(rings[i].u, rings[i].v)); },
+            freeze: function () { paused = true; autoSpin = false; },
+            step: function (dt) { simT += dt; updateTrans(dt); pumpSeq(); draw(); }
+        };
+    </script>
+</body>
+</html>

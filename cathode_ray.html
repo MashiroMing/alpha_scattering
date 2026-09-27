@@ -35,7 +35,7 @@
         }
         .subtitle {
             color: rgba(255,255,255,0.9);
-            font-size: 13px;
+            font-size: 16px;
             margin: 6px 0 12px;
         }
         .stage {
@@ -89,7 +89,7 @@
         label {
             margin-bottom: 6px;
             font-weight: bold;
-            font-size: 13px;
+            font-size: 16px;
             color: #333;
             white-space: nowrap;
         }
@@ -112,12 +112,12 @@
         }
         .mode-option span {
             display: block;
-            padding: 7px 6px;
+            padding: 8px 6px;
             border: 2px solid #667eea;
-            border-radius: 16px;
+            border-radius: 18px;
             color: #667eea;
             font-weight: bold;
-            font-size: 13px;
+            font-size: 16px;
             text-align: center;
             transition: all 0.3s;
             user-select: none;
@@ -130,13 +130,22 @@
             color: white;
             box-shadow: 0 3px 8px rgba(102, 126, 234, 0.4);
         }
+        /* 按钮行：开始/暂停 与 重置 并排等分 */
+        .btn-row {
+            display: flex;
+            gap: 10px;
+        }
+        .btn-row button {
+            flex: 1 1 0;
+            min-width: 0;
+        }
         button {
-            padding: 10px 14px;
-            font-size: 15px;
+            padding: 11px 14px;
+            font-size: 16px;
             cursor: pointer;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            border: none;
+            border: 2px solid transparent;
             border-radius: 22px;
             font-weight: bold;
             font-family: inherit;
@@ -151,6 +160,17 @@
         button:active {
             transform: translateY(0);
         }
+        /* 次要动作（重置）：描边样式，把视觉重心留给「开始实验」 */
+        button.secondary {
+            background: white;
+            color: #667eea;
+            border-color: #667eea;
+            box-shadow: none;
+        }
+        button.secondary:hover {
+            background: rgba(102, 126, 234, 0.08);
+            box-shadow: 0 4px 10px rgba(102, 126, 234, 0.18);
+        }
         /* ── 现象解读卡：左边框颜色随偏转方式变化 ─────────────────────── */
         .reading {
             padding: 12px 16px 14px;
@@ -160,26 +180,26 @@
         .reading[data-mode="electric"] { border-left-color: #667eea; }
         .reading[data-mode="magnetic"] { border-left-color: #16a085; }
         .reading-head {
-            font-size: 15px;
+            font-size: 17px;
             font-weight: bold;
             color: #333;
             margin-bottom: 7px;
         }
         .reading-body {
-            font-size: 13px;
+            font-size: 16px;
             color: #444;
-            line-height: 1.66;
+            line-height: 1.7;
         }
         .reading-body strong { color: #764ba2; }
         .reading[data-mode="electric"] .reading-body strong { color: #4a5ec7; }
         .reading[data-mode="magnetic"] .reading-body strong { color: #0f7a63; }
         .reading-note {
-            margin-top: 9px;
-            padding-top: 8px;
+            margin-top: 10px;
+            padding-top: 9px;
             border-top: 1px dashed rgba(0,0,0,0.12);
-            font-size: 12px;
+            font-size: 15px;
             color: #777;
-            line-height: 1.6;
+            line-height: 1.65;
         }
         .reading-note:empty { display: none; }
         /* ── 实验说明：默认折叠；展开后在本栏内部滚动，页面高度不变 ──── */
@@ -187,7 +207,7 @@
             flex: 0 0 auto;
             display: flex;
             flex-direction: column;
-            font-size: 13px;
+            font-size: 16px;
             color: #333;
             overflow: hidden;
         }
@@ -201,9 +221,9 @@
            现在统一由 .side 出滚动条 —— 展开后正文按自然高度撑开即可。 */
         .legend > summary {
             cursor: pointer;
-            padding: 12px 16px;
+            padding: 13px 16px;
             font-weight: bold;
-            font-size: 14px;
+            font-size: 17px;
             list-style: none;
             display: flex;
             align-items: center;
@@ -215,7 +235,7 @@
         .legend > summary::after {
             content: "展开 ▾";
             margin-left: auto;
-            font-size: 12px;
+            font-size: 14px;
             font-weight: normal;
             color: #8e7cc3;
         }
@@ -260,7 +280,7 @@
             padding: 7px 16px;
             background: rgba(255,255,255,0.82);
             color: #555;
-            font-size: 13px;
+            font-size: 15px;
             border-radius: 20px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.12);
             text-decoration: none;
@@ -283,7 +303,7 @@
             padding: 8px 18px;
             background: rgba(255, 255, 255, 0.82);
             color: #555;
-            font-size: 13px;
+            font-size: 15px;
             border-radius: 20px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.12);
             backdrop-filter: blur(8px);
@@ -355,6 +375,14 @@
 
         <div class="side">
             <div class="panel controls">
+                <!-- 播放控制放在最上面：页面打开时画面是静止的，讲完装置再点「开始实验」 -->
+                <div class="control-group">
+                    <div class="btn-row">
+                        <button id="runBtn" onclick="toggleRun()" aria-pressed="false"
+                                title="打开页面时画面静止 —— 讲完装置再点这里，电子才开始沿路径流动">▶ 开始实验</button>
+                        <button class="secondary" onclick="resetTube()">🔄 重置</button>
+                    </div>
+                </div>
                 <div class="control-group">
                     <label>偏转方式（每次只加一种，做对照）</label>
                     <div class="mode-options">
@@ -375,9 +403,6 @@
                 <div class="control-group">
                     <label>场强: <span id="strengthValue" style="color: #667eea;">6</span></label>
                     <input type="range" id="strength" min="1" max="10" step="1" value="6">
-                </div>
-                <div class="control-group">
-                    <button onclick="resetTube()">🔄 重置</button>
                 </div>
             </div>
 
@@ -439,6 +464,23 @@
         let retracting = false;     // 换场时先把射线拉直，再弯向新方向（避免形状突跳）
         const EASE = 0.12;          // 每帧逼近系数
 
+        // 播放状态：打开页面时【待机】—— 课堂动线是"先讲装置、再动手演示"。
+        //   待机 = 只画一张【空装置图】：真空管、阴极、荧光屏、场区都在，
+        //          但**没有射线、没有电子、没有光斑**——留给老师讲装置；
+        //   运行 = 第一个电子从阴极打出，引导线随它一路画到荧光屏，
+        //          之后电子沿路径持续流动，偏转走平滑过渡。
+        let running = false;
+
+        // 电子束的"射出进度"：flow 单调增长，表示束中最前端电子已走过的路径比例。
+        //   flow < 0 → 还没打出；0~1 → 正在飞；> 1 → 首束已到屏。
+        //   电子 j 的位置 = flow − j·SPACING（取模循环），所以 j=0 永远是束头，
+        //   引导线就画到束头为止 —— "线随第一个电子打出而绘制"天然成立。
+        let flow = 0;
+        let beamOn = false;         // 首束是否已经打到屏（置位后引导线不再回退，只重置时清）
+        let grow = 0;               // 引导线当前画到哪儿（0 = 一格都没画，1 = 整条到屏）
+        const FLOW_SPEED = 0.85;    // 每秒推进的路径比例 → 首束约 1.2 s 打到荧光屏
+        let lastT = -1;             // 上一帧时间戳（ms），用来算 dt
+
         // 屏幕上"不偏转时的落点"——只在真的偏转时才画虚影，否则会和光斑重叠
         const GHOST_MIN = 12;
 
@@ -453,7 +495,7 @@
 
         // 沿路径流动的电子（纯视觉：让射线看起来是"持续的粒子流"）
         const DOT_COUNT = 16;
-        let dotPhase = 0;
+        const SPACING = 1 / DOT_COUNT;              // 相邻电子的路径间隔
 
         // ══ 轨迹计算 ═════════════════════════════════════════════════
         // 返回 { pts, yScreen }。pts 是从阴极到屏的多段折线（40 段足够平滑）。
@@ -657,7 +699,18 @@
             ctx.stroke();
         }
 
-        function drawRay(pts) {
+        // 引导线。upto = 画到路径的第几成（0~1）——束头电子走到哪儿，线就画到哪儿。
+        //  upto ≥ 1 直接用原折线（省掉采样）；中间态才按弧长取样截断。
+        function drawRay(pts, upto) {
+            upto = (upto === undefined) ? 1 : upto;
+            if (upto <= 1e-4) return;                    // 待机：一格都不画
+            let path = pts;
+            if (upto < 1) {
+                const at = buildSampler(pts);
+                path = [];
+                const N = 64;
+                for (let i = 0; i <= N; i++) path.push(at(upto * i / N));
+            }
             ctx.save();
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';
@@ -668,24 +721,47 @@
             layers.forEach(function (L) {
                 ctx.lineWidth = L[0];
                 ctx.strokeStyle = L[1];
-                strokeRayPath(pts);
+                strokeRayPath(path);
             });
             ctx.restore();
         }
 
-        // 沿路径流动的电子：把"这是一束粒子流"直接画出来
+        // 沿路径流动的电子：把"这是一束粒子流"直接画出来。
+        // 【生长阶段】第 0 号电子永远在束头 —— 引导线画到它为止，它就是"第一个打出的电子"；
+        //   后面的电子按 SPACING 依次从阴极打出，所以一开始路径上很稀疏。
+        // 【束流建立后】改为在整条路径上【均匀铺满】并持续流动。
+        //   若继续用生长公式 + 取模，会出现"前面一段空、后面一段挤"的周期性稀疏；
+        //   而切换点两边的点位其实是同一组均匀点（只差 1/16 相位），所以过渡看不出来。
+        // 【待机】flow = 0 → 一个都不画（只有射出后才出现）。
+        function electronTs() {
+            const ts = [];
+            let j;
+            if (!beamOn) {
+                for (j = 0; j < DOT_COUNT; j++) {
+                    const t = flow - j * SPACING;
+                    if (t < 1e-6) break;                       // 还没打出
+                    if (t <= 1) ts.push(t);
+                }
+                return ts;
+            }
+            const base = (flow - 1) % 1;
+            for (j = 0; j < DOT_COUNT; j++) ts.push((base + j * SPACING + 1) % 1);
+            return ts;
+        }
+
         function drawElectrons(pts) {
+            const ts = electronTs();
+            if (!ts.length) return;
             const at = buildSampler(pts);
             ctx.save();
-            for (let i = 0; i < DOT_COUNT; i++) {
-                let t = (i / DOT_COUNT + dotPhase) % 1;
+            ts.forEach(function (t) {
                 const p = at(t);
                 const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, 7);
                 g.addColorStop(0, 'rgba(235, 255, 255, 0.95)');
                 g.addColorStop(1, 'rgba(120, 235, 255, 0)');
                 ctx.fillStyle = g;
                 ctx.fillRect(p.x - 7, p.y - 7, 14, 14);
-            }
+            });
             ctx.restore();
         }
 
@@ -713,7 +789,9 @@
         // 画布上的文字标注：统一加一层深色底板，避免被射线切成碎片
         function tag(text, x, y, color, size) {
             ctx.save();
-            size = size || 14;
+            // 画布内标注随页面字号一起放大：CSS 显示尺寸约为画布的 0.87 倍，
+            // 17 → 投影上约 15px，与页面正文（小四 16px）观感一致
+            size = size || 17;
             ctx.font = 'bold ' + size + 'px "Microsoft YaHei", sans-serif';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
@@ -732,8 +810,8 @@
             tag('荧光屏', 1090, 96, 'rgba(150, 255, 205, 0.95)');
             if (mode === 'electric') {
                 tag('偏转区：两块极板之间加电场', 750, 96, 'rgba(255, 220, 190, 0.95)');
-                tag('＋ 正极板', 750, PLATE.topY - 24, 'rgba(255, 150, 150, 0.95)', 13);
-                tag('− 负极板', 750, PLATE.botY + PLATE.h + 24, 'rgba(140, 190, 255, 0.95)', 13);
+                tag('＋ 正极板', 750, PLATE.topY - 24, 'rgba(255, 150, 150, 0.95)', 15);
+                tag('− 负极板', 750, PLATE.botY + PLATE.h + 24, 'rgba(140, 190, 255, 0.95)', 15);
             } else if (mode === 'magnetic') {
                 tag('偏转区：加磁场 B ⊗（垂直纸面向里）', 750, 96, 'rgba(180, 235, 255, 0.95)');
             } else {
@@ -795,13 +873,34 @@
             document.getElementById('strengthValue').textContent = this.value;
         });
 
+        // ══ 播放控制（待机 / 运行）═══════════════════════════════════
+        // 单独抽成函数：探针要能读到按钮文案与 aria-pressed，判断"打开时确实没在播"
+        function syncRunButton() {
+            const b = document.getElementById('runBtn');
+            if (!b) return;
+            b.textContent = running ? '⏸ 暂停' : '▶ 开始实验';
+            b.setAttribute('aria-pressed', running ? 'true' : 'false');
+        }
+
+        function toggleRun() {
+            running = !running;
+            syncRunButton();
+        }
+
+        // 重置：回到"不加场 + 场强 6 + 待机"（一轮讲完，重新从空白装置图开始）
         function resetTube() {
+            running = false;
             retracting = false;
             deflect = 0;
+            // 电子束一并清空 → 画面回到"没有射线、没有电子"的初始状态
+            flow = 0;
+            beamOn = false;
+            grow = 0;
             strength = 6;
             document.getElementById('strength').value = 6;
             document.getElementById('strengthValue').textContent = '6';
             setMode('none');   // 由 setMode 统一同步 radio 与解读卡，避免两处各写一遍
+            syncRunButton();
         }
 
         // 偏转量逐帧逼近目标：换场时先归零，再弯向新方向。
@@ -811,6 +910,12 @@
         //    内层分支不会执行，retracting 就永远解除不了 —— 射线再也弯不起来。
         function stepDeflect() {
             const target = deflectTarget();
+            if (!running) {
+                // 待机：直接落到目标值，不播过渡动画（"开始"之前画面不该有动的东西）
+                deflect = target;
+                retracting = false;
+                return;
+            }
             if (Math.abs(target - deflect) > 1e-6) {
                 deflect += (target - deflect) * EASE;
                 if (Math.abs(target - deflect) < 0.002) deflect = target;
@@ -819,12 +924,30 @@
         }
 
         // ══ 主循环 ═══════════════════════════════════════════════════
-        function animate() {
+        // 推进电子束。抽成函数是为了让无头探针能手动 step（--dump-dom 下 rAF 不执行）。
+        //  ⚠️ 束流建立后 flow 的回绕量必须是【1 的整数倍】：此时 flow 只用来给电子定相位
+        //     （t_j 对 1 取模），回绕量取 1 才相位无损。若按"整束周期"回绕，回绕瞬间
+        //     电子会整体错位 1/16 格。
+        //  ⚠️ grow 只在"还没到屏"时跟着 flow 长；一旦到屏就锁死 1，引导线不会缩回去。
+        function stepFlow(dt) {
+            if (!running) return;                     // 待机 / 暂停：整幅冻结
+            flow += dt * FLOW_SPEED;
+            if (!beamOn) {
+                if (flow >= 1) { flow = 1; beamOn = true; }
+                grow = Math.min(1, flow);
+                return;
+            }
+            grow = 1;
+            if (flow >= 1) flow -= 1;                 // 相位无损回绕
+        }
+
+        // 只重绘当前状态，不推进任何物理量。抽出来是为了让无头探针能在
+        // 手动 stepFlow() 之后立刻重绘并读像素（--dump-dom 下 rAF 不执行）。
+        function render() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             drawGrid();
             drawTube();
 
-            stepDeflect();
             const ray = buildRay();
 
             if (mode === 'electric') {
@@ -832,19 +955,48 @@
             } else if (mode === 'magnetic') {
                 drawMagneticField();
             }
-            drawGhost(ray.yScreen);
+            if (grow >= 1) drawGhost(ray.yScreen);   // 射线打到屏了，才谈"另一条理论路径"
             drawScreen();
             drawCathode();
-            drawRay(ray.pts);
-            drawElectrons(ray.pts);
-            drawSpot(ray.yScreen);
-            drawLabels();
 
-            dotPhase = (dotPhase + 0.0022) % 1;
+            // 电子束：待机时【一格都不画】——老师先讲装置，画面里没有射线也没有电子。
+            // 点开始后，引导线随束头（第 0 号）电子一起从阴极长出来，约 1.2 s 打到屏，
+            // 光斑在最后 12% 行程里渐亮。
+            if (grow > 1e-4) {
+                drawRay(ray.pts, grow);
+                drawElectrons(ray.pts);
+                const spotAlpha = spotAlphaNow();    // 光斑在最后 12% 行程里渐亮
+                if (spotAlpha > 0.01) {
+                    ctx.save();
+                    ctx.globalAlpha = spotAlpha;     // 与 drawSpot 内部的 rgba alpha 相乘
+                    drawSpot(ray.yScreen);
+                    ctx.restore();
+                }
+            }
+            drawLabels();
+        }
+
+        // 光斑可见度：射线没到屏之前不出现（待机 = 0，到屏 = 1）
+        function spotAlphaNow() {
+            if (grow <= 1e-4) return 0;
+            return Math.max(0, Math.min(1, (grow - 0.88) / 0.12));
+        }
+
+        function animate(now) {
+            now = (typeof now === 'number') ? now : performance.now();
+            if (lastT < 0) lastT = now;
+            let dt = (now - lastT) / 1000;
+            lastT = now;
+            if (dt > 0.05) dt = 0.05;      // 切标签页回来时别让电子一步跳过头
+
+            stepDeflect();
+            stepFlow(dt);
+            render();
             requestAnimationFrame(animate);
         }
 
         updateReading();
+        syncRunButton();
         animate();
 
         /* 展开「实验说明」后，只在标题落到可视区外时才把它滚到右栏顶部。
