@@ -141,6 +141,26 @@
             border-color: #764ba2;
             box-shadow: 0 0 0 3px rgba(118, 75, 162, 0.15);
         }
+        /* 核数输入 + 列数提示：同一行，不额外占高度（右栏 892px 只剩 36px 余量） */
+        .nuc-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .nuc-row .beam-input {
+            flex: 1 1 auto;
+            width: auto;
+            min-width: 0;
+        }
+        .nuc-hint {
+            flex: 0 0 auto;
+            min-width: 52px;
+            font-size: 13px;
+            color: #6b7290;
+            text-align: left;
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
+        }
         /* 选择器（radio 伪装成按钮组） */
         .beam-options {
             display: flex;
@@ -238,6 +258,29 @@
             font-size: 14px;
             color: #666;
             margin-top: 2px;
+        }
+        /* 百分比小字：与计数同一行信息量的补充。
+           用 tabular-nums 让数字等宽，连发几次时不跳动。 */
+        .stat-pct {
+            font-size: 13px;
+            color: #8a8f96;
+            margin-top: 1px;
+            font-variant-numeric: tabular-nums;
+            min-height: 16px;
+        }
+        /* 统计面板底部一行：累计样本数 + 采样提示 */
+        .stats-note {
+            grid-column: 1 / -1;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px dashed rgba(102,126,234,0.25);
+            font-size: 13px;
+            color: #6b7290;
+            text-align: center;
+        }
+        .stats-note b {
+            color: #4a5070;
+            font-variant-numeric: tabular-nums;
         }
         /* 实验说明：默认折叠；展开后在本栏内部滚动，页面高度不变 */
         .legend {
@@ -453,25 +496,16 @@
         <aside class="side">
             <div class="panel controls" data-page-node-id="WzF3AznZzlcwaAhD65RCJm">
                 <div class="control-group" data-page-node-id="QiDsPRfbIa0ADg0T3Yztyp">
-                    <label for="beamCount" data-page-node-id="GaGXdJYKAbv5Xsp97aUjLo">α粒子束数（1-300 自由输入）</label>
+                    <label for="beamCount" data-page-node-id="GaGXdJYKAbv5Xsp97aUjLo">α 粒子束数（≤300）</label>
                     <input type="number" id="beamCount" min="1" max="300" step="1" value="100"
                            class="beam-input" data-page-node-id="Vz1CB2NFGUkKoFjfXArzcM">
                 </div>
                 <div class="control-group" data-page-node-id="k4WQHAlUVvholOJUcAfuNQ">
-                    <label data-page-node-id="BxsWB3sskbRkRkHFeolMNc">金原子核数（竖直排列）</label>
-                    <div class="beam-options" data-page-node-id="SJljnqQRwnrKAT04PEXnWu">
-                        <label class="beam-option" data-page-node-id="3DbZycsMU6psUD1h9bbqum">
-                            <input type="radio" name="nucleusCount" value="1" data-page-node-id="fz5ZLkekbyABLC8nPR2emv">
-                            <span data-page-node-id="ucteWb46WFKynvyMBFYKUO">1 个</span>
-                        </label>
-                        <label class="beam-option" data-page-node-id="6I2MZ1kumbnKySOtGXEww3">
-                            <input type="radio" name="nucleusCount" value="3" data-page-node-id="BpBhuBBsqeQQH4JyR1OroN">
-                            <span data-page-node-id="sO7or4OvcJdwH62tVBtEqS">3 个</span>
-                        </label>
-                        <label class="beam-option" data-page-node-id="OYqpj7iito4ezcwm5Pf7FX">
-                            <input type="radio" name="nucleusCount" value="5" checked data-page-node-id="yIWWRrNvFGbRBfAafxEX88">
-                            <span data-page-node-id="btNG35znW4KslZ8CCGnxHW">5 个</span>
-                        </label>
+                    <label for="nucleusCount" data-page-node-id="BxsWB3sskbRkRkHFeolMNc">金原子核数（1–30）</label>
+                    <div class="nuc-row" data-page-node-id="SJljnqQRwnrKAT04PEXnWu">
+                        <input type="number" id="nucleusCount" min="1" max="30" step="1" value="27"
+                               class="beam-input" data-page-node-id="yIWWRrNvFGbRBfAafxEX88">
+                        <span class="nuc-hint" id="nucLayout" data-page-node-id="ucteWb46WFKynvyMBFYKUO">3 列</span>
                     </div>
                 </div>
                 <div class="control-group" data-page-node-id="MGqjEkSEjE8IGLaNIUdrqL">
@@ -506,29 +540,33 @@
                 <div class="stat-item" data-page-node-id="1RQHNCzSg2tZowpYYZhzd5">
                     <div class="stat-value" id="straight" data-page-node-id="IJeWEkdTyaQ6Ef85hiVXUk">0</div>
                     <div class="stat-label" data-page-node-id="kCdIORQZuUEfK6GFOCFzUK">直线穿过</div>
+                    <div class="stat-pct" id="straightPct"></div>
                 </div>
                 <div class="stat-item" data-page-node-id="AxOaKershlLc9dD7p4NQv3">
                     <div class="stat-value" id="deflected" data-page-node-id="nvsrJD1Apt7kWLfyAEEjKf">0</div>
                     <div class="stat-label" data-page-node-id="aEsSN2PvRSutiszHwyWOAy">偏转</div>
+                    <div class="stat-pct" id="deflectedPct"></div>
                 </div>
                 <div class="stat-item" data-page-node-id="Nm2Sfn4TU4NBLSygFH3CaY">
                     <div class="stat-value" id="bounced" data-page-node-id="V7f1MAY8Ode5WfiOlhO8nI">0</div>
                     <div class="stat-label" data-page-node-id="MluCsRYJF3VZXPVAeXEkEr">反弹</div>
+                    <div class="stat-pct" id="bouncedPct"></div>
                 </div>
+                <div class="stats-note" id="statsNote">累计样本 <b>0</b> 个 α 粒子 · 每次发射重新取样</div>
             </div>
 
             <details class="panel legend" data-page-node-id="XJ2jSrvEHZE1qOHAEevc4M">
                 <summary>💡 <strong data-page-node-id="05sGl7voGM1HLtghys8yl1">实验说明</strong></summary>
                 <div class="legend-body">
                     <ul>
-                        <li><strong data-page-node-id="clickHint">👆 撤掉金箔后，点击金色的原子核</strong>，看看金原子的内部结构——会打开「核式原子结构模型」，里面能看到核内的 <strong>79 个质子</strong> 和 <strong>118 个中子</strong>，以及核外 79 个电子的分层排布。<span style="color:#8a8f96;">（金箔铺着时核被挡住，点不到；撤掉金箔后鼠标移到金核上会变成手指形状，点一下即可。新标签页打开，本页实验结果不会丢）</span></li>
-                        <li><strong>金箔怎么摆：</strong>α 粒子束从左侧射向金箔，<strong>入射角可在 −60°~+60° 调节</strong>（整个束场统一倾斜）；可切换 1 / 3 / 5 个金原子核，竖直排列模拟金箔切面。</li>
+                        <li><strong data-page-node-id="clickHint">👆 撤掉金箔后，点击金色的原子核</strong>，看看金原子的内部结构——会打开「玻尔原子模型 · 电子分层排布」，里面能看到核内的 <strong>79 个质子</strong> 和 <strong>118 个中子</strong>，以及核外 79 个电子的分层排布。<span style="color:#8a8f96;">（金箔铺着时核被挡住，点不到；撤掉金箔后鼠标移到金核上会变成手指形状，点一下即可。新标签页打开，本页实验结果不会丢）</span></li>
+                        <li><strong>金箔怎么摆：</strong>α 粒子束从左侧射向金箔，<strong>入射角可在 −60°~+60° 调节</strong>（整个束场统一倾斜）；金原子核数可在 <strong>1 ~ 30</strong> 之间自由设定，<strong>列数自动跟着核数走</strong>：1~10 个 → 单列，11~20 个 → 两列，21~30 个 → 三列，每列的核在竖直方向均匀铺开。默认 27 个 = <strong>3 列 × 9 行</strong>，就是金箔的截面：沿入射方向排 3 层，粒子会连续穿过三层原子。</li>
                         <li><span style="color:#a8b0b8;" data-page-node-id="electronShellDesc">浅色虚线圆</span>表示金原子的<strong>最外层电子轨道</strong>（玻尔模型）——仅作视觉展示，不影响物理计算；α 粒子实际只与金核（+79e）的库仑斥力作用。</li>
-                        <li><span style="color:#e8890c; font-weight:bold;" data-page-node-id="3LZKhuQnokn1tyAwPcDFVP">橙色束正对某个金原子核</span>，<strong>只有正对核的束才会被反弹</strong>（入射角改变时，橙色瞄准线随之倾斜）。</li>
-                        <li><strong>三种结果：</strong>靠近核的束受库仑斥力发生<strong>偏转</strong>；从核间空隙穿过的束几乎<strong>直线通过</strong>；正对核的束被<strong>反弹</strong>回来。</li>
-                        <li><strong>推荐试试：</strong><strong data-page-node-id="AmY8tTFCJwIlE7drmjcW0K">50-300 任意束数 + 5 核</strong>→ 绝大多数直线穿过、少数偏转、极少数反弹，这正是卢瑟福观察到的现象。</li>
-                        <li><strong>能量管什么？</strong>能量<strong>越低</strong>（1-2 MeV），粒子越慢、在核附近停留越久，被库仑力推开得越明显——几乎整片束都被推偏；能量<strong>越高</strong>，粒子飞快掠过核旁，只有离核很近的少数几束才会发生较大偏转，其余基本笔直穿过。（无论能量调到几档，"少数偏转 + 极少数反弹"始终存在。）</li>
-                        <li><strong>入射角能说明什么？</strong>无论把入射角调到多少度，<strong>正对核的那束总会被弹回</strong>——说明"原子核带正电、体积极小"这个结论与入射方向无关。（角度较大时，正对束的起点会移出画布、从上/下边缘飞入，但它仍然正对目标核。）</li>
+                        <li><span style="color:#e8890c; font-weight:bold;" data-page-node-id="3LZKhuQnokn1tyAwPcDFVP">橙色 = 被弹回来的粒子</span>（出射方向与入射方向夹角 ≥ 90°）。<strong>颜色是它飞出去之后才变橙的</strong>——发射前没有任何一条束被"安排"去撞核。</li>
+                        <li><strong>三种结果：</strong>从核间空隙穿过的束几乎<strong>直线通过</strong>；从核旁掠过的束受库仑斥力<strong>偏转</strong>；极少数擦得极近的束被<strong>弹回</strong>来。</li>
+                        <li><strong>推荐试试：</strong><strong data-page-node-id="AmY8tTFCJwIlE7drmjcW0K">27 核 + 300 束</strong>→ 绝大多数直线穿过、少数偏转、极少数反弹，这正是卢瑟福观察到的现象。然后<strong>再点几次「发射」</strong>——每次落点都重新随机，统计栏的百分比会逐渐稳定下来；样本越多，三个数字越可靠。</li>
+                        <li><strong>能量管什么？</strong>能量<strong>越低</strong>（1-2 MeV），粒子越慢、在核附近停留越久，被库仑力推开得越明显——偏转与反弹都明显增多；能量<strong>越高</strong>，粒子飞快掠过核旁，只有离核很近的少数几束才会发生较大偏转，其余基本笔直穿过。</li>
+                        <li><strong>为什么默认给 27 个核？</strong>核少的时候（比如 5 个单列），束场里绝大多数粒子的落点离任何一个核都很远，样本太"稀疏"、也太依赖那几个固定位置。核数一多，每个落点周围都有邻居，统计才有意义；排成 3 列之后，粒子还能连续穿过三层原子，让几次小偏转累积起来。<span style="color:#8a8f96;">（真实金箔约上千层原子，这里是它的截面近似；2D 截面无法复刻真实的三维概率，本页的比例经过放大，见 README）</span></li>
                         <li><strong>🟡 用「布丁模型」做反证：</strong>把「原子模型」切到<strong>布丁模型</strong>再发一次——那是汤姆逊发现电子后提出的模型：正电荷像"布丁"一样<strong>均匀铺满整个原子</strong>，电子像"葡萄干"嵌在里面。<strong>同样的束数、能量、入射角，结果却完全不同：一束都不会被反弹。</strong>可实验明明观察到"极少数 α 粒子被弹了回来"——<strong>矛盾 → 布丁模型错了</strong>。卢瑟福正是据此把它推翻，换成"正电荷集中在极小体积的核上"的核式模型。<span style="color:#8a8f96;">（切换模型只改"正电荷怎么分布"这一件事，其余参数全部不动，是严格的对照实验）</span></li>
                     </ul>
                 </div>
@@ -539,67 +577,141 @@
     <script>
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
+        // ── 旧内核兼容：CanvasRenderingContext2D.roundRect ───────────────────
+        // 需要 Chrome/Edge ≥ 99、Firefox ≥ 112、Safari ≥ 16.4。旧内核缺失时，
+        // 首帧绘制就抛 TypeError → animate() 里的 requestAnimationFrame 执行不到
+        // → 动画循环直接死掉 → 画布全黑（只剩网格）。故此处补一个等价实现。
+        // 原生支持时本段整体跳过，不影响新浏览器。
+        (function () {
+            var P = window.CanvasRenderingContext2D && CanvasRenderingContext2D.prototype;
+            if (!P || typeof P.roundRect === 'function') return;
+            P.roundRect = function (x, y, w, h, r) {
+                if (typeof r === 'number') r = [r, r, r, r];
+                else if (Array.isArray(r)) {
+                    if (r.length === 1) r = [r[0], r[0], r[0], r[0]];
+                    else if (r.length === 2) r = [r[0], r[1], r[0], r[1]];
+                    else if (r.length === 3) r = [r[0], r[1], r[2], r[1]];
+                } else if (r && typeof r === 'object') {
+                    r = [r.x || 0, r.y || 0, r.z || 0, r.w || 0];   // DOMPointInit 形式
+                } else r = [0, 0, 0, 0];
+                var m = Math.min(Math.abs(w), Math.abs(h)) / 2;
+                r = r.map(function (v) { return Math.min(Math.max(v, 0), m); });
+                this.moveTo(x + r[0], y);
+                this.lineTo(x + w - r[1], y);
+                this.arcTo(x + w, y, x + w, y + r[1], r[1]);
+                this.lineTo(x + w, y + h - r[2]);
+                this.arcTo(x + w, y + h, x + w - r[2], y + h, r[2]);
+                this.lineTo(x + r[3], y + h);
+                this.arcTo(x, y + h, x, y + h - r[3], r[3]);
+                this.lineTo(x, y + r[0]);
+                this.arcTo(x, y, x + r[0], y, r[0]);
+                this.closePath();
+            };
+        })();
+
 
         const nucleusRadius = 12;
+
+        // ══ 金箔原子阵列（2D 截面）══════════════════════════════════════
+        // 真实金箔 0.4 μm 约上千层原子。本页用「几层 × 若干行」的截面近似：
+        //   · 沿入射方向排【多列】→ α 粒子沿途反复穿过原子层，小偏转可以累积，
+        //     某一层上"擦得很近"的那次会把粒子甩出去 —— 反弹因此是【算出来的】，
+        //     不再是"把某条束吸附到穿过核心的直线上"这种预设特判。
+        //   · 竖直排【多行】→ 束场里每个位置都有邻居，样本不再只落在少数特殊位置上。
+        // 阵列间距 100px 同时决定"最外层电子轨道半径 = 50px"（相邻原子的轨道相切 → 密实金箔）。
+        const LATTICE_SPACING = 100;      // 列间距（沿入射方向）
+        const ROW_SPAN = 800;             // 竖直铺开的总跨度：y ∈ [50, 850]
+        const COLUMN_MAX_GAP = 150;       // 单列且核很少时，竖直间距最多放到 150px（旧版观感）
+        const MIN_NUCLEI = 1;
+        const MAX_NUCLEI = 30;
+
         // 金原子最外层电子轨道半径（玻尔模型）：仅作视觉展示，不影响物理计算
-        // 取值 = 核间距 ÷ 2 → 相邻金原子的电子轨道【相切】，拼成密实的金箔
-        // （而非一颗颗彼此分离的小球）；由 setupNuclei 按核数自适应，5核 75px / 3核 100px
-        let electronShellRadius = 100;
+        let electronShellRadius = LATTICE_SPACING / 2;
+        // 金箔半宽 = 原子阵列的外轮廓（含最外侧那圈电子轨道），由 setupNuclei 维护
+        let foilHalfWidth = 150;
+        // 当前阵列的布局参数（setupNuclei 写入，绘制与探针都读它）
+        let latticeLayout = { count: 27, cols: 3, rows: 9, gap: 100, perCol: [9, 9, 9] };
 
-        // α粒子与金核的"最近接近距离"（库仑势垒）：1/r² 力在 d < R_MIN 时不再增大。
-        // 既避免 d→0 时力发散产生数值尖角，也保证 α 粒子不会"穿进"核里。
-        // （真实依据：金核库仑势垒 ≈ 20 MeV 以上，5 MeV 的 α 粒子根本接触不到核，
-        //   所以真实实验里不存在"撞到核再弹开"，偏转 100% 来自 1/r² 斥力）
-        const R_MIN = 16;
-        // 子步长：每条束每帧拆成 SUB 个子步积分，并按子步记录轨迹点。
-        // 低速近核时避免"一帧一个大角度"的多边形折角（实测：E=1 时折角 52° → 7°）
-        const SUB = 8;
+        // ══ 积分方案：自适应子步（不再钳制库仑力）════════════════════════
+        // 真实 5 MeV α 粒子对金核的最近接近距离 ≈ 45.5 fm，而金核半径只有 7.3 fm
+        // —— 粒子在"碰到核"之前就被 1/r² 推回来了。所以这里【删掉了 R_MIN 力钳制】：
+        // 一旦给力设上限，头对头撞上来的粒子就会径直穿过核（实测：R_MIN=16 时 b=0 的出射角是 0°），
+        // 旧版只能靠 isCenter 特判把它"扳回来"，那是假反弹。
+        // 现在只做数值保护：离最近核 < NEAR_R 时把子步从 SUB 加密到 NEAR_BOOST。
+        // 实测收敛性：8 / 32 / 96 / 384 子步的 b→θ 曲线完全重合（b90=1.56px @k=1），
+        // 且 b10/b90 = 11.4，与卢瑟福解析比 cot(5°)/cot(45°) 完全一致 → 力律是对的。
+        const SUB = 8;              // 基础子步（远离核时）
+        const NEAR_R = 45;          // 与最近核的距离小于它 → 加密
+        const NEAR_BOOST = 64;      // 加密后的子步数
 
-        // ══ 能量的作用上限（教学标定，勿随意改动）══════════════════════════
-        // 【原来的 bug】能量被"双重计入"偏转：
-        //     ① 库仑力分母里塞了 1/E；② 速度又随能量增长（作用时间更短）。
-        //   两者相乘 → E=10 时偏转影响区只剩 ±3.7px，而 100 束的束间距是 8.3px，
-        //   整条束场"漏过"影响区 → 偏转计数归零（实测 E≥7 恒为 0），
-        //   与教材"少数 α 粒子发生较大角度偏转"的描述不符。
-        // 【修正】库仑力 F = kq₁q₂/r² 本身与能量无关，能量只通过速度起作用
-        //   （速度越快 → 在核附近停留越短 → 冲量越小 → 越难被偏转）。
-        //   5 MeV 以上速度增长放缓，保证高能档位仍有可观测的偏转。
-        // 【实测（100 束 / 5 核，偏转栏）】修正前 95 79 51 27 13 6 0 0 0 0
-        //                                 修正后 95 79 51 27 13 10 8 8 8 6
-        //   E≤5 逐字节不变，E=6~10 由"归零"变为"少数但非零"。
-        const FORCE_E_CAP = 5;     // 库仑力能量系数的上限（MeV）
-        const SPEED_TAIL = 0.2;    // 超过上限后速度对能量的敏感度（0=完全饱和，1=不衰减）
+        // ══ 库仑常数（为本页几何重新标定）══════════════════════════════
+        // 校准目标不是复刻真实比例（2D 截面做不到，见 README 的说明），而是让
+        // 【27 核 / 300 束 / E=5MeV】的三分类落在教材描述上：
+        //     直线 83% · 偏转 16% · 反弹 1.4%（每 300 个约 4 个被弹回）
+        // 标定方法：tools/alpha_phys.js 用与页面同构的积分器跑 3000 个粒子统计。
+        const K_COULOMB = 0.06;
+        const Q_ALPHA = 2;          // α 粒子电荷 +2e
+        const Q_GOLD = 79;          // 金原子核电荷 +79e
+        const SPEED_TAIL = 0.2;     // E > 5 MeV 后速度增长放缓（0=完全饱和，1=不衰减）
 
-        // 金原子核数组（支持 1/3/5 个，竖直一列模拟金箔切面）
+        // 金原子核数组
         // 默认核数：单一真值来源。
-        // 改这个值时必须同步改 HTML 里对应 radio 的 checked 属性 —— 探针 defaultRadioNotFive
-        // 会守住两处一致，写错立刻断言失败；启动时也按它校正 radio，避免静态属性写错导致画面与按钮不符。
-        const DEFAULT_NUCLEUS_COUNT = 5;
+        // 改这个值时必须同步改 HTML 里 #nucleusCount 的 value —— 探针会守住两处一致，
+        // 写错立刻断言失败；启动时也按它校正输入框。
+        const DEFAULT_NUCLEUS_COUNT = 27;
         let nuclei = [];
 
+        // 核数 → 列数：1~10 单列 / 11~20 两列 / 21~30 三列
+        // 为什么这样分档：列数决定"粒子要连续穿过几层原子"。1 列只能擦一次；
+        //   3 列才有"小偏转累积成大角度"的机会 —— 这也是 27 核比 5 核更接近教材的原因。
+        function colsForCount(count) {
+            return count <= 10 ? 1 : (count <= 20 ? 2 : 3);
+        }
+
         function setupNuclei(count) {
+            // 夹紧到 1~30（手填 0 / 99 / 空 / 小数都收得住；空 → 回到默认 27）
+            const raw = (count === undefined || count === null) ? '' : String(count).trim();
+            count = raw === '' ? DEFAULT_NUCLEUS_COUNT : Math.round(Number(raw));
+            if (!isFinite(count)) count = DEFAULT_NUCLEUS_COUNT;
+            count = Math.max(MIN_NUCLEI, Math.min(MAX_NUCLEI, count));
+
             nuclei = [];
             const cx = canvas.width / 2;   // 600
             const cy = canvas.height / 2;  // 450
-            if (count === 1) {
-                nuclei.push({x: cx, y: cy});
-                // 单核无相邻原子可相切，取与 3 核一致的 100px，视觉均衡
-                electronShellRadius = 100;
-            } else {
-                // 竖直一列，核间距拉大（3核间距200px / 5核间距150px）
-                // 核间空隙远大于核本身 → 直观体现"原子内部十分空旷"
-                const top = (count === 3) ? 250 : 150;
-                const bottom = (count === 3) ? 650 : 750;
-                // 电子轨道半径 = 核间距 ÷ 2 → 相邻原子的电子轨道恰好相切，
-                // 拼成一堵"密不透风的墙"；而 α 粒子仍能穿过 → 逼出"原子内部几乎全是空的"
-                electronShellRadius = (bottom - top) / (count - 1) / 2;
-                for (let i = 0; i < count; i++) {
-                    nuclei.push({
-                        x: cx,
-                        y: top + ((bottom - top) * i) / (count - 1)
-                    });
+            const cols = colsForCount(count);
+
+            // 每列核数尽量均分：多出来的优先给左边的列（余数 < 列数，最多差 1 个）
+            const perCol = [];
+            const base = Math.floor(count / cols);
+            const rem = count % cols;
+            for (let c = 0; c < cols; c++) perCol.push(base + (c < rem ? 1 : 0));
+
+            // 竖直间距：所有列共用同一个行距（保证"列对齐"），并按最多的那列自适应。
+            // 行数越多行距越密，但单列且核很少时最多放到 150px —— 否则 2 个核会被拉到画布两端。
+            const rows = Math.max.apply(null, perCol);
+            const gap = rows > 1 ? Math.min(COLUMN_MAX_GAP, ROW_SPAN / (rows - 1)) : COLUMN_MAX_GAP;
+
+            // 电子轨道半径 = 行距的一半（竖直相邻相切）；多列时再受列距约束（横向也相切）
+            electronShellRadius = (cols > 1 ? Math.min(gap, LATTICE_SPACING) : gap) / 2;
+            foilHalfWidth = ((cols - 1) * LATTICE_SPACING) / 2 + electronShellRadius;
+
+            for (let c = 0; c < cols; c++) {
+                const x = cx + (c - (cols - 1) / 2) * LATTICE_SPACING;
+                const n = perCol[c];
+                // 每列以 cy 为中心竖直铺开（核数不同的列也保持同一中心线）
+                const top = cy - ((n - 1) * gap) / 2;
+                for (let r = 0; r < n; r++) {
+                    nuclei.push({ x: x, y: top + r * gap });
                 }
             }
+
+            latticeLayout = { count: count, cols: cols, rows: rows, gap: gap, perCol: perCol };
+
+            // 输入框与提示同步（手填越界时回显夹紧后的值）
+            const input = document.getElementById('nucleusCount');
+            if (input && Number(input.value) !== count) input.value = count;
+            const hint = document.getElementById('nucLayout');
+            if (hint) hint.textContent = cols + ' 列 · ' + rows + ' 行';
         }
 
         // α粒子数组
@@ -626,9 +738,9 @@
         //   （整团正电物质就是"原子"，电子嵌在其中，像葡萄干嵌在布丁里）：
         //     球外 d ≥ R：整团电荷等效集中于球心 → F ∝ 1/d²
         //     球内 d < R：只有半径 d 以内的电荷起作用 → F ∝ d/R³（线性，球心处为 0）
-        //   峰值力出现在球面 d=R 处，仅 kq₁q₂/R²。5 核时 R=75px，而核式模型的
-        //   最近作用距离 R_MIN=16px —— 布丁模型的峰值力只有核式的 (16/75)² ≈ 4.5%，
-        //   α 粒子只会被轻轻推一下，【永远不可能被反弹】。
+        //   峰值力出现在球面 d=R 处，仅 kq₁q₂/R²（27 核时 R=50px），再往里只会更小。
+        //   核式模型在 d→0 时还能继续增长（1/r² 无上限）—— 这一个差别就决定了
+        //   "能不能被弹回来"：布丁只会把粒子轻轻推一下，【永远不可能被反弹】。
         //   这正是布丁模型的致命伤：解释不了"极少数 α 粒子被反弹回来"。
         let atomModel = 'nuclear';
         const PUDDING_Q = 79;   // 布丁模型里整团正电荷的电量（与核式模型同一个 +79e）
@@ -651,17 +763,23 @@
 
         // 绘制所有金原子核
         // alpha：整层不透明度（金箔挡着时为 0 → 完全不画，连淡淡的影子都不留）
+        // 【多核性能】27 个核时逐个画径向渐变光晕既费时又糊成一片 → 只在少量核时画光晕；
+        //   核电荷文字 +79e 也只标【中间那一个】（27 个都标会压满画面，且字比核还大）。
         function drawNuclei(alpha) {
             if (alpha <= 0.001) return;
+            const many = nuclei.length > 6;
+            const labeled = nuclei[Math.floor(nuclei.length / 2)];
             ctx.save();
             ctx.globalAlpha = alpha;
             nuclei.forEach(nuc => {
-                // 外层光晕
-                const gradient = ctx.createRadialGradient(nuc.x, nuc.y, 0, nuc.x, nuc.y, nucleusRadius * 3);
-                gradient.addColorStop(0, 'rgba(255, 215, 0, 0.3)');
-                gradient.addColorStop(1, 'rgba(255, 215, 0, 0)');
-                ctx.fillStyle = gradient;
-                ctx.fillRect(nuc.x - nucleusRadius * 3, nuc.y - nucleusRadius * 3, nucleusRadius * 6, nucleusRadius * 6);
+                // 外层光晕（少量核时才画）
+                if (!many) {
+                    const gradient = ctx.createRadialGradient(nuc.x, nuc.y, 0, nuc.x, nuc.y, nucleusRadius * 3);
+                    gradient.addColorStop(0, 'rgba(255, 215, 0, 0.3)');
+                    gradient.addColorStop(1, 'rgba(255, 215, 0, 0)');
+                    ctx.fillStyle = gradient;
+                    ctx.fillRect(nuc.x - nucleusRadius * 3, nuc.y - nucleusRadius * 3, nucleusRadius * 6, nucleusRadius * 6);
+                }
 
                 // 金原子最外层电子轨道（玻尔模型）：浅灰白虚线圆
                 // 相邻原子半径取核间距的一半 → 电子轨道【相切】，模拟固态金箔中原子紧密堆积
@@ -686,11 +804,33 @@
                 ctx.stroke();
 
                 // 绘制核电荷标记
-                ctx.fillStyle = '#000';
-                ctx.font = 'bold 15px Arial';
-                ctx.textAlign = 'center';
-                ctx.fillText('+79e', nuc.x, nuc.y + 4);
+                //   少量核：直接写在核里（核径 12px，15px 字刚好压住，像印章）
+                //   多核：写在核里会变成一堆黑点、且盖住相邻原子 → 改成阵列外侧的一枚标签
+                if (!many && nuc === labeled) {
+                    ctx.fillStyle = '#000';
+                    ctx.font = 'bold 15px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('+79e', nuc.x, nuc.y + 5);
+                }
             });
+
+            // 多核：阵列右侧一枚"+79e 每个金核"标签（深色底板，防被轨迹切断）
+            // 位置至少离中心 120px（单列时 foilHalfWidth 只有 40~75px，贴太近会压住电子轨道圆）
+            if (many) {
+                const label = '+79e 每个金核';
+                const lx = canvas.width / 2 + Math.max(foilHalfWidth, 120) + 16;
+                const ly = canvas.height / 2;
+                ctx.font = 'bold 15px "Microsoft YaHei", sans-serif';
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'middle';
+                const tw = ctx.measureText(label).width;
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.62)';
+                ctx.beginPath();
+                ctx.roundRect(lx - 7, ly - 14, tw + 14, 28, 6);
+                ctx.fill();
+                ctx.fillStyle = '#FFD700';
+                ctx.fillText(label, lx, ly);
+            }
             ctx.restore();
         }
 
@@ -703,7 +843,10 @@
         function drawPudding(alpha) {
             if (alpha <= 0.001) return;
             const GOLDEN = Math.PI * (3 - Math.sqrt(5));   // 黄金角 ≈ 2.39996 rad
-            const N_ELECTRON = 79;
+            const many = nuclei.length > 6;
+            // 27 个球逐个塞 79 个电子 = 2133 个圆点/帧，既慢又糊成一片青雾 →
+            // 多球时每球只点 12 个（"电子嵌在其中"的语义不变，视觉上也不打架）
+            const N_ELECTRON = many ? 12 : 79;
             ctx.save();
             ctx.globalAlpha = alpha;
 
@@ -711,21 +854,29 @@
                 const R = electronShellRadius;
 
                 // 1. 正电球主体：径向渐变（中心略亮）→ 读作"一团有厚度的物质"，而非空心圈
-                const grad = ctx.createRadialGradient(nuc.x, nuc.y, 0, nuc.x, nuc.y, R);
-                grad.addColorStop(0.00, 'rgba(255, 214, 120, 0.28)');
-                grad.addColorStop(0.65, 'rgba(255, 205, 90, 0.17)');
-                grad.addColorStop(1.00, 'rgba(255, 200, 70, 0.06)');
-                ctx.fillStyle = grad;
-                ctx.beginPath();
-                ctx.arc(nuc.x, nuc.y, R, 0, Math.PI * 2);
-                ctx.fill();
+                //    多球时改用平色：27 个径向渐变费时，而相邻球体相切、渐变也看不出层次
+                if (many) {
+                    ctx.fillStyle = 'rgba(255, 210, 100, 0.16)';
+                    ctx.beginPath();
+                    ctx.arc(nuc.x, nuc.y, R, 0, Math.PI * 2);
+                    ctx.fill();
+                } else {
+                    const grad = ctx.createRadialGradient(nuc.x, nuc.y, 0, nuc.x, nuc.y, R);
+                    grad.addColorStop(0.00, 'rgba(255, 214, 120, 0.28)');
+                    grad.addColorStop(0.65, 'rgba(255, 205, 90, 0.17)');
+                    grad.addColorStop(1.00, 'rgba(255, 200, 70, 0.06)');
+                    ctx.fillStyle = grad;
+                    ctx.beginPath();
+                    ctx.arc(nuc.x, nuc.y, R, 0, Math.PI * 2);
+                    ctx.fill();
+                }
 
                 // 2. 球面轮廓：实线（刻意区别于核式模型那圈"电子轨道"虚线）
                 ctx.strokeStyle = 'rgba(255, 205, 90, 0.75)';
                 ctx.lineWidth = 1.5;
                 ctx.stroke();
 
-                // 3. 79 个电子嵌在球内（青色，对应核式模型里电子的颜色）
+                // 3. 电子嵌在球内（青色，对应核式模型里电子的颜色）
                 ctx.fillStyle = 'rgba(120, 230, 255, 0.92)';
                 ctx.strokeStyle = 'rgba(20, 90, 120, 0.55)';
                 ctx.lineWidth = 1;
@@ -739,14 +890,15 @@
                 }
 
                 // 4. 要害标注：只标【中间那一个】球，且放在球外侧右侧。
-                //    5 个球重复标同一条文字会糊成一片；球内全是电子点，写字又会被压住。
+                //    多个球重复标同一条文字会糊成一片；球内全是电子点，写字又会被压住。
                 //    必须加一层深色底板 —— α 轨迹横穿这个位置，不加底板的文字会被切成碎片。
                 if (nuc === nuclei[Math.floor(nuclei.length / 2)]) {
                     const label = '+79e 均匀分布';
                     ctx.font = 'bold 17px "Microsoft YaHei", sans-serif';
                     ctx.textAlign = 'left';
                     ctx.textBaseline = 'middle';
-                    const lx = nuc.x + R + 22;
+                    // 多球时标签放在整片"布丁"外侧，避免压在相邻的原子上
+                    const lx = many ? (canvas.width / 2 + foilHalfWidth + 16) : (nuc.x + R + 22);
                     const tw = ctx.measureText(label).width;
                     ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
                     ctx.beginPath();
@@ -759,39 +911,21 @@
             ctx.restore();
         }
 
-        // 绘制每个核的正对入射路径提示线（沿当前入射角 θ 穿过核心）
-        // alpha：同 drawNuclei —— 金箔挡着时不画，否则虚线会直接暴露核的位置
-        function drawAimLines(alpha) {
-            if (alpha <= 0.001) return;
-            ctx.save();
-            ctx.globalAlpha = alpha;
-            const thetaRad = incidenceAngle * Math.PI / 180;
-            // 一条足够长的线段：以核为起点，沿 ±入射方向各延伸 2 倍画布宽
-            const R = canvas.width * 2;
-            const dx = Math.cos(thetaRad) * R;
-            const dy = Math.sin(thetaRad) * R;
-            ctx.strokeStyle = 'rgba(255, 165, 0, 0.25)';
-            ctx.lineWidth = 1;
-            ctx.setLineDash([8, 8]);
-            nuclei.forEach(nuc => {
-                ctx.beginPath();
-                ctx.moveTo(nuc.x - dx, nuc.y - dy);
-                ctx.lineTo(nuc.x + dx, nuc.y + dy);
-                ctx.stroke();
-            });
-            ctx.setLineDash([]);
-            ctx.restore();
-        }
+        // 【已删除】drawAimLines（"每个核一条正对入射虚线"）
+        //   旧版靠它告诉学生"这条橙色的束正对某个核，所以会被弹回"，而那条束是被
+        //   fireAlpha 硬吸附到"穿过核心的直线"上的 —— 反弹是预设的，不是算出来的。
+        //   v7.0 起反弹由 1/r² 库仑斥力自然产生（见 AlphaParticle.update），
+        //   既然没有"正对束"这个概念，瞄准线自然也不该存在。
 
-        // 绘制金箔：竖直金色薄层，正好铺在核所在的那一列上
-        // 【几何口径】宽度 = 2 × electronShellRadius —— 与 drawNuclei 里
-        //   "相邻金原子的电子轨道相切、拼成密实金箔"是同一个宽度。所以撤掉金箔时，
-        //   金色薄层的左右边界正好落在原子簇的外轮廓上，是一种"箔宽 = 原子铺开的范围"的呼应。
+        // 绘制金箔：竖直金色薄层，正好盖住原子阵列所在的范围
+        // 【几何口径】半宽 = foilHalfWidth（阵列外轮廓：3 层 × 100px 间距 + 最外侧原子半径 50px = 150）
+        //   撤掉金箔时，金色薄层的左右边界正好落在原子簇的外轮廓上 → "箔宽 = 原子铺开的范围"。
+        //   层数从 1 增到 3 时箔体随之变厚 —— 这本身就是"箔有多少层原子"的直观提示。
         // 高度铺满画布：这是从侧面看一片薄箔的截面。
         function drawFoil(alpha) {
             if (alpha <= 0.001) return;
             const cx = canvas.width / 2;
-            const half = electronShellRadius;
+            const half = foilHalfWidth;
             const left = cx - half;
             const right = cx + half;
 
@@ -844,192 +978,146 @@
 
         // α粒子类
         // 每束 1 个粒子，沿全局入射角 θ 平行射入（θ=0 即水平入射，与原行为一致）
-        // isCenter = true 表示该束的入射直线【穿过某个金原子核核心】（正对该核）
-        // targetNucleus = 该束正对的核对象（isCenter 时有效）
+        // 【v7.0 起没有"正对束"这个概念了】
+        //   旧版构造参数里的 isCenter / targetNucleus 是"把某条束吸附到穿过核心的直线上"的结果，
+        //   反弹靠这段特判强行掉头。现在每束就是一个普通粒子，从画布左缘沿入射角平行射入，
+        //   只受 27 个金核的 1/r² 斥力 —— 会不会被弹回，由它自己飞出来的角度说了算。
         class AlphaParticle {
-            constructor(startY, energy, isCenter, targetNucleus, thetaRad) {
+            constructor(startY, energy, thetaRad) {
                 this.x = 20;
                 this.y = startY;
                 this.energy = energy;
                 // 速度：能量的"落点"。能量越高速度越快，在核附近停留时间越短 → 越难被偏转。
-                // 5 MeV 以上增长放缓（见 FORCE_E_CAP / SPEED_TAIL 的说明），
-                // 否则高能档位的偏转影响区会缩到比束间距还小，偏转计数直接归零。
-                const speedE = energy <= FORCE_E_CAP
-                    ? energy
-                    : FORCE_E_CAP + (energy - FORCE_E_CAP) * SPEED_TAIL;
+                // 5 MeV 以上增长放缓（见 SPEED_TAIL 的说明），保证高能档位仍有可观测的偏转。
+                const speedE = energy <= 5 ? energy : 5 + (energy - 5) * SPEED_TAIL;
                 this.speed = 2 + speedE * 0.5;
-                // 库仑力分母里的能量系数：同样在 FORCE_E_CAP 处截断。
-                // 物理上库仑力与能量无关，这里保留能量系数只是为了在低能端
-                // 拉开"能量越低越容易被推开"的视觉差异；高能端不再继续削弱，避免偏转归零。
-                this.eForce = Math.min(energy, FORCE_E_CAP);
-                // 入射方向按全局入射角倾斜：dirX/dirY 是入射方向单位向量
-                // （正对束沿此方向前进；被推回后应沿 -dir 方向返回）
+                // 库仑力与能量无关（F = kq₁q₂/r² 里没有 E）——能量只通过速度起作用。
+                // 旧版在力里又除了一次 E，等于把能量计了两遍，这里不再这么做。
                 this.thetaRad = thetaRad;
                 this.dirX = Math.cos(thetaRad);
                 this.dirY = Math.sin(thetaRad);
                 this.vx = this.speed * this.dirX;
                 this.vy = this.speed * this.dirY;
                 this.entered = false;   // 是否已进入过画布（大角度时起点可能位于画布外）
-                this.traveled = 0;      // 累计行程（未进入画布时的安全网）
+                this.traveled = 0;      // 累计行程（安全网：防止粒子被卡在核间）
                 // 粒子半径：稀疏 4px / 密集 4px / 极密 1.5px（300 束 2.7px 间距下 1.5px 防止粒子体糊成一片）
                 this.radius = extremeMode ? 1.5 : 4;
                 this.trail = [];
-                // 轨迹点数：稀疏 100 / 密集 40 / 极密 30，再 ×SUB（按子步采样）。
-                // ×SUB 后轨迹的"空间长度"与旧版一致，只是采样更密 → 曲线更光滑
+                // 轨迹点数：稀疏 100 / 密集 40 / 极密 30，再 ×SUB（与子步解耦，见 update）
                 this.maxTrail = (extremeMode ? 30 : (denseMode ? 40 : 100)) * SUB;
                 this.active = true;
                 this.result = null; // 'straight', 'deflected', 'bounced'
-                this.isCenter = isCenter;         // 是否正对某个金原子核
-                this.targetNucleus = targetNucleus; // 正对的是哪个核
-                this.bounced = false;       // 正对束：已反弹（计入 bounced）
             }
 
             update() {
                 if (!this.active) return;
 
-                // === 1. 库仑斥力（所有金核叠加）+ 子步长积分 ===
-                // 【为什么删掉了"撞核再弹开"？】
-                //   真实的 α 粒子（约 5 MeV）根本接触不到金核——金核库仑势垒约 20 MeV 以上，
-                //   粒子在离核尚有距离时就被推开。所以偏转 100% 来自 1/r² 库仑斥力，
-                //   不存在几何"碰撞"。旧版在 21px 处设了一道"硬墙"+镜面反射+位置瞬移
-                //   （粒子被凭空挪走 20~23px），这正是轨迹上"折角"的根源，现已彻底移除。
-                // 【R_MIN 距离钳制】近似"粒子不可能比 R_MIN 更靠近金核"的库仑势垒，
-                //   同时消除 d→0 时 1/r² 的数值发散（否则会甩出速度尖峰）。
-                // 【SUB 子步长】每帧拆成 SUB 个子步积分并按子步记录轨迹点，低速近核时
-                //   不再出现"一帧一个大角度"的多边形折角（实测最大折角 52° → 7°）。
-                // k=1 已按"偏转影响区 ±16px @能量5"标定：
-                // 核间距 150px 下影响区不重叠 → 300 束时约 82% 直线（"绝大多数直线穿过"成立）
-                const k = 1;  // 库仑常数（v4 重标定：v3 的 k=10 影响区 ±180px 会全覆盖核间空隙）
-                const q1 = 2;  // α粒子电荷
-                const q2 = 79; // 金原子核电荷
-                const dt = 1 / SUB;
+                // === 1. 自适应子步：离最近核越近，积分越细 ===
+                // 不用"给力设上限"来防发散（那会让头对头的粒子直接穿过核），
+                // 而是把时间步缩小 —— 力律保持 1/r² 不变，轨迹自然收敛。
+                let dNear = Infinity;
+                for (let i = 0; i < nuclei.length; i++) {
+                    const d = Math.hypot(nuclei[i].x - this.x, nuclei[i].y - this.y);
+                    if (d < dNear) dNear = d;
+                }
+                const subN = dNear < NEAR_R ? NEAR_BOOST : SUB;
+                const dt = 1 / subN;
+                // 采样与子步解耦：每帧最多记 SUB 个轨迹点。
+                // 否则近核一帧 64 个点会瞬间吃光 maxTrail，轨迹在核附近被整段截断。
+                const sampleEvery = Math.max(1, Math.round(subN / SUB));
 
-                for (let s = 0; s < SUB; s++) {
+                for (let s = 0; s < subN; s++) {
                     // 1a. 正电荷斥力叠加 + 子步长积分
-                    //     核式模型 = 逐核 1/r²（距离钳制在 R_MIN 以上）；布丁模型 = 整团均匀分布。
-                    //     两种模型共用同一个 k / q₁ / eForce，唯一的差别就是"正电荷怎么分布"。
-                    nuclei.forEach(nuc => {
+                    //     核式模型 = 逐核 1/r²；布丁模型 = 整团均匀分布。
+                    //     两种模型共用同一个 K_COULOMB / q₁，唯一的差别就是"正电荷怎么分布"。
+                    for (let i = 0; i < nuclei.length; i++) {
+                        const nuc = nuclei[i];
                         const dx = nuc.x - this.x;
                         const dy = nuc.y - this.y;
                         const distance = Math.sqrt(dx * dx + dy * dy);
-                        if (distance > 1e-6) {
-                            let force;
-                            if (atomModel === 'nuclear') {
-                                const dEff = Math.max(distance, R_MIN);
-                                // 距离越近力越大；能量越大偏转越小（能量系数在 FORCE_E_CAP 处截断）
-                                force = k * q1 * q2 / (dEff * dEff * this.eForce);
-                            } else {
-                                // 布丁模型：均匀带电球。球内线性（球心处为 0）、球外 1/r²，
-                                // 两式在 d=R 处连续且取到峰值力 —— 不需要 R_MIN 钳制，也不会发散。
-                                const R = electronShellRadius;
-                                force = distance < R
-                                    ? k * q1 * PUDDING_Q * distance / (R * R * R * this.eForce)
-                                    : k * q1 * PUDDING_Q / (distance * distance * this.eForce);
-                            }
-                            // 斥力方向：正电荷团 → 粒子（取负，与 dx,dy 反向）
-                            this.vx += -(dx / distance) * force * dt;
-                            this.vy += -(dy / distance) * force * dt;
+                        if (distance < 1e-6) continue;   // 数值奇点直接跳过，下个子步就分开了
+                        let force;
+                        if (atomModel === 'nuclear') {
+                            // 纯 1/r²，不设下限 —— 头对头的粒子会被自己"刹住并退回"
+                            force = K_COULOMB * Q_ALPHA * Q_GOLD / (distance * distance);
+                        } else {
+                            // 布丁模型：均匀带电球。球内线性（球心处为 0）、球外 1/r²，
+                            // 两式在 d=R 处连续且取到峰值力 —— 本来就不会发散。
+                            const R = electronShellRadius;
+                            force = distance < R
+                                ? K_COULOMB * Q_ALPHA * PUDDING_Q * distance / (R * R * R)
+                                : K_COULOMB * Q_ALPHA * PUDDING_Q / (distance * distance);
                         }
-                    });
+                        // 斥力方向：正电荷团 → 粒子（取负，与 dx,dy 反向）
+                        this.vx += -(dx / distance) * force * dt;
+                        this.vy += -(dy / distance) * force * dt;
+                    }
 
                     // 1b. 位置更新
                     this.x += this.vx * dt;
                     this.y += this.vy * dt;
 
-                    // 1c. 正对束反弹：到达库仑势垒（或已被推回）→ 沿原路反向。
-                    //     【倾斜适配】改用"沿入射方向的分量 along"判定是否已被推回，
-                    //     而不是只看 vx<0——倾斜时 vx 恒为正，旧判据会失效。
-                    //     along<0 表示速度已与入射方向相反（越过转折点）→ 保持反向即可；
-                    //     若尚未反向却已到势垒（罕见），做一次整体掉头，之后不再翻转（幂等）。
-                    //     【布丁模型没有反弹】正电荷被摊开在整个原子尺度上，峰值力只有核式的
-                    //     百分之几，α 粒子最多被轻轻推一下。所以这里加 atomModel 门禁 ——
-                    //     它表达的是物理结论（布丁模型解释不了反弹），不是数值特判。
-                    if (atomModel === 'nuclear' && this.isCenter && this.targetNucleus && !this.bounced) {
-                        const dToTarget = Math.hypot(
-                            this.targetNucleus.x - this.x,
-                            this.targetNucleus.y - this.y
-                        );
-                        const along = this.vx * this.dirX + this.vy * this.dirY;
-                        if (along < 0 || dToTarget < R_MIN) {
-                            if (along > 0) {
-                                // 仍在前进却已到达势垒 → 整体反向（只发生一次）
-                                this.vx = -this.vx;
-                                this.vy = -this.vy;
-                            }
-                            this.result = 'bounced';
-                            stats.bounced++;
-                            updateStats();
-                            this.bounced = true;
-                        }
-                    }
-
-                    // 1d. 进入画布标记：大角度倾斜时，正对束起点可能落在画布外，
-                    //     必须先"进入"画布，才允许被"飞出边界"判定消灭，
-                    //     否则粒子一出生（在画布外）就被误判出界而立即消失。
+                    // 1c. 进入画布标记：大角度倾斜时起点可能落在画布外，
+                    //     必须先"进入"画布，才允许被"飞出边界"判定消灭。
                     if (!this.entered &&
                         this.x >= 0 && this.x <= canvas.width &&
                         this.y >= 0 && this.y <= canvas.height) {
                         this.entered = true;
                     }
 
-                    // 1e. 记录轨迹（按子步记录 → 采样密度 ×SUB，曲线更细腻）
-                    this.trail.push({x: this.x, y: this.y});
-                    if (this.trail.length > this.maxTrail) {
-                        this.trail.shift();
+                    // 1d. 记录轨迹
+                    if (s % sampleEvery === 0) {
+                        this.trail.push({x: this.x, y: this.y});
+                        if (this.trail.length > this.maxTrail) this.trail.shift();
                     }
                 }
 
-                // 安全网：起点在画布外、却始终没能进入画布的粒子。
-                //   大角度倾斜时偶发——束紧贴画布上/下边缘掠过、被余光轻微偏折后直接飞出视野。
-                //   这类粒子从头到尾都不可见，及时清除即可；
-                //   为保持"统计总数 = 束数"，计入"直线穿过"（它在可见范围内没有发生可见作用）。
-                //   注：每帧位移 ≈ 速率（子步长累计恰好抵消），故直接用 hypot(vx,vy) 累加。
                 this.traveled += Math.hypot(this.vx, this.vy);
-                if (!this.entered && (this.traveled > 2000 ||
-                    this.x > canvas.width + 300 || this.x < -300 ||
-                    this.y < -1400 || this.y > canvas.height + 1400)) {
-                    if (!this.result) {
+                if (this.trail.length === 0 ||
+                    (this.trail[this.trail.length - 1].x !== this.x ||
+                     this.trail[this.trail.length - 1].y !== this.y)) {
+                    this.trail.push({x: this.x, y: this.y});
+                    if (this.trail.length > this.maxTrail) this.trail.shift();
+                }
+
+                // === 2. 分类：只看"出射方向与入射方向的夹角"，没有任何特判 ===
+                //   ≥90° 反弹 / 10°~90° 偏转 / <10° 直线穿过。
+                //   倾斜入射时基准是入射角 θ，否则整片斜射的直线束会被误判成偏转。
+                const classify = () => {
+                    let diff = Math.atan2(this.vy, this.vx) - this.thetaRad;
+                    diff = Math.atan2(Math.sin(diff), Math.cos(diff)); // 归一化到 (-π, π]
+                    const deviation = Math.abs(diff) * 180 / Math.PI;  // 0°=直线，180°=完全反向
+                    if (deviation >= 90) {
+                        this.result = 'bounced';
+                        stats.bounced++;
+                    } else if (deviation >= 10) {
+                        this.result = 'deflected';
+                        stats.deflected++;
+                    } else {
                         this.result = 'straight';
                         stats.straight++;
-                        updateStats();
                     }
-                    this.active = false;
+                    updateStats();
+                };
+
+                // 安全网：起点在画布外、却始终没能进入画布（大角度倾斜时偶发）
+                if (!this.entered) {
+                    if (this.traveled > 2000 ||
+                        this.x > canvas.width + 300 || this.x < -300 ||
+                        this.y < -1400 || this.y > canvas.height + 1400) {
+                        if (!this.result) classify();
+                        this.active = false;
+                        return;
+                    }
                     return;
                 }
 
-                // === 2. 飞出画布判定（全部粒子统一处理：飞出才停止，绝不冻结在画布内）===
-                //    修复：之前"反弹/偏转后 1.5 秒强制停止"会让粒子在中途被定格成光团，
-                //    现在改为"粒子一直运动直到飞出画布边界"，确保所有束最终都飞出画布。
-                //    【倾斜适配】起点可能在画布外 → 只有"已进入过画布"的粒子才做飞出判定。
-                if (this.entered &&
-                    (this.x > canvas.width + 20 || this.x < -20 ||
-                     this.y > canvas.height + 20 || this.y < -20)) {
-                    // 若仍未计数，在此补计
-                    if (!this.result) {
-                        if (this.isCenter && atomModel === 'nuclear') {
-                            // 正对核的粒子：库仑势垒必然把它推回 → 反弹（保底）
-                            // 布丁模型下没有势垒，这条保底不成立 → 落到下面按偏转角正常判定
-                            this.result = 'bounced';
-                            stats.bounced++;
-                        } else {
-                            // 非正对束：按"出射方向与【入射方向 θ】的夹角"判定。
-                            // 倾斜后基准不再是水平 0°，而是入射角 θ——否则倾斜的直线束会被误判为偏转。
-                            let diff = Math.atan2(this.vy, this.vx) - this.thetaRad;
-                            diff = Math.atan2(Math.sin(diff), Math.cos(diff)); // 归一化到 (-π, π]
-                            const deviation = Math.abs(diff) * 180 / Math.PI;  // 0°=直线，180°=完全反向
-
-                            if (deviation < 10) {
-                                // 偏转角 10° 以内，视觉上算"直线穿过"
-                                this.result = 'straight';
-                                stats.straight++;
-                            } else {
-                                this.result = 'deflected';
-                                stats.deflected++;
-                            }
-                        }
-                        updateStats();
-                    }
-                    // 无论是否已计数，飞出画布即停止运动（不再冻结在画布内）
+                // 飞出画布即停止（反弹的粒子会从左边飞出去）
+                const out = this.x > canvas.width + 20 || this.x < -20 ||
+                            this.y > canvas.height + 20 || this.y < -20;
+                // 兜底：极少数被多个核来回推、长时间不出去的粒子（不进统计会把总数弄错）
+                if (out || this.traveled > 20000) {
+                    if (!this.result) classify();
                     this.active = false;
                 }
             }
@@ -1038,9 +1126,13 @@
                 if (this.trail.length < 2) return;
 
                 // 正对束橙色高亮，其他束青色
-                const r = this.isCenter ? 255 : 0;
-                const g = this.isCenter ? 165 : 255;
-                const b = this.isCenter ? 0 : 255;
+                // 颜色编码"结果"，而不是"身份"：
+                //   被弹回的粒子在飞出画布那一刻整条轨迹转橙（此时才计入 bounced 栏），
+                //   其余保持青色。这样橙色是【跑完之后才知道的结论】，不是事先贴的标签。
+                const isBounced = this.result === 'bounced';
+                const r = isBounced ? 255 : 0;
+                const g = isBounced ? 165 : 255;
+                const b = isBounced ? 0 : 255;
 
                 if (extremeMode) {
                     // === 300 束极密模式：单次描边 + globalAlpha，性能最优 ===
@@ -1096,14 +1188,34 @@
 
                 // 边框仅在非极密模式画（极密下半径已 1.5px、画边反而糊）
                 if (!extremeMode) {
-                    ctx.strokeStyle = this.isCenter ? '#CC8400' : '#00CCCC';
+                    ctx.strokeStyle = this.result === 'bounced' ? '#CC8400' : '#00CCCC';
                     ctx.lineWidth = 1;
                     ctx.stroke();
                 }
             }
         }
 
-        // 发射α粒子束（齐射：按束数均匀分布，并对每个核吸附一束到其正对线上）
+        // ══ 每次发射的横向相位（抽样）════════════════════════════════════
+        // 为什么要随机：27 个核排成规则晶格，如果束场永远落在同一组 y 上，
+        //   每条束的碰撞参数 b 就固定不变 —— 连发 100 次结果逐字节相同，那不是"统计"，
+        //   只是把同一张图重画 100 遍。
+        // 做法：每次发射把【整片束场】沿竖直方向平移一个 [0, 晶格间距) 的随机量。
+        //   物理上等价于"金箔不动、粒子落点随机" —— 同一套参数多打几次，样本才真的在变。
+        // 随机源用 mulberry32（种子确定 → 同一次打开页面的回放、截图、探针都可复现）。
+        let shotSeed = 20261019;
+        let shotPhase = 0;          // 当前这一次发射用的相位（探针可直接读）
+        function nextPhase() {
+            shotSeed = (shotSeed + 0x6D2B79F5) | 0;
+            let t = shotSeed;
+            t = Math.imul(t ^ (t >>> 15), 1 | t);
+            t = t + Math.imul(t ^ (t >>> 7), 61 | t) ^ t;
+            const r = ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+            // 相位幅度 = 一个"行距"：让落点在一个完整周期内均匀取值（核越密行距越小，相位也越小）
+            const period = latticeLayout.gap;
+            return (r - 0.5) * period;   // 以中心为基准左右各偏半格
+        }
+
+        // 发射 α 粒子束：竖直均匀铺展 + 每次随机的横向相位
         function fireAlpha() {
             // 读取并夹紧束数到 1-300 范围（处理 NaN / 越界 / 空输入）
             const beamInput = document.getElementById('beamCount');
@@ -1124,51 +1236,22 @@
             denseMode = beamCount >= 50;
             extremeMode = beamCount >= 200;
 
-            // 1. 束场起点：竖直均匀铺展，并整体按入射角平移，
-            //    使束场在核列竖直截面上的覆盖【以核列中心为中心】。
-            //    起点 x 固定 20；起点 y 中心 = 核列中心 − dx·tanθ
-            //    （θ 较大时部分起点会落到画布外，束会从画布上/下边缘飞入——这是允许的）
+            // 束场起点：竖直均匀铺展，并整体按入射角平移，
+            // 使束场在原子阵列竖直截面上的覆盖【以画布中心为中心】。
+            // 起点 x 固定 20；起点 y 中心 = 画布中心 − dx·tanθ
+            // （θ 较大时部分起点会落到画布外，束会从画布上/下边缘飞入——这是允许的）
             const START_X = 20;
-            const dxToNuclei = nuclei[0].x - START_X;                              // 580
-            const yc = (nuclei[0].y + nuclei[nuclei.length - 1].y) / 2;            // 核列中心 y
-            const yCenter = yc - dxToNuclei * tanT;                                // 起点中心
+            const dxToNuclei = canvas.width / 2 - START_X;      // 580
+            const yCenter = canvas.height / 2 - dxToNuclei * tanT;
             const margin = 40;
-            const spread = canvas.height - 2 * margin;                             // 820（θ=0 时与原行为一致）
-            const positions = [];
+            const spread = canvas.height - 2 * margin;          // 820
+            const phase = nextPhase();
+            shotPhase = phase;
+
             for (let i = 0; i < beamCount; i++) {
-                positions.push(
-                    beamCount === 1
-                        ? yCenter
-                        : yCenter - spread / 2 + (spread * i) / (beamCount - 1)
-                );
+                const y = (beamCount === 1 ? yCenter : yCenter - spread / 2 + (spread * i) / (beamCount - 1)) + phase;
+                particles.push(new AlphaParticle(y, energy, thetaRad));
             }
-
-            // 2. 对每个核，把最近的未占用束吸附到"穿过该核心的入射直线"在左缘的交点上
-            //    （中间核优先选束，保证 1 束时正对中间的核）
-            const centerInfo = new Array(beamCount).fill(null); // 每束正对的核（null=非正对）
-            const sortedNuclei = [...nuclei].sort(
-                (a, b) => Math.abs(a.y - canvas.height / 2) - Math.abs(b.y - canvas.height / 2)
-            );
-            sortedNuclei.forEach(nuc => {
-                // 该核对应的正对束起点 y（沿 -θ 方向从核心反推到左缘）
-                const aimStartY = nuc.y - dxToNuclei * tanT;
-                let bestIdx = -1, bestDist = Infinity;
-                positions.forEach((y, idx) => {
-                    if (centerInfo[idx]) return; // 已被其他核占用
-                    const d = Math.abs(y - aimStartY);
-                    if (d < bestDist) { bestDist = d; bestIdx = idx; }
-                });
-                if (bestIdx >= 0) {
-                    positions[bestIdx] = aimStartY;   // 吸附到正对入射线
-                    centerInfo[bestIdx] = nuc;
-                }
-            });
-
-            // 3. 生成粒子
-            positions.forEach((y, idx) => {
-                const isCenter = centerInfo[idx] !== null;
-                particles.push(new AlphaParticle(y, energy, isCenter, centerInfo[idx], thetaRad));
-            });
         }
 
         // 切换金箔：撤掉 ↔ 铺回（可反复演示对照）
@@ -1192,11 +1275,22 @@
             updateFoilBtn();
         }
 
-        // 更新统计
+        // 更新统计（计数 + 百分比 + 累计样本）
+        // 百分比的意义：单次发射只有 100~300 个样本，反弹往往只有 1~4 个，
+        //   看"个数"很难比较；连发几次把样本堆到上千，百分比才会稳定下来 ——
+        //   这正是"为什么要大量重复"的直接体验。
         function updateStats() {
             document.getElementById('straight').textContent = stats.straight;
             document.getElementById('deflected').textContent = stats.deflected;
             document.getElementById('bounced').textContent = stats.bounced;
+
+            const total = stats.straight + stats.deflected + stats.bounced;
+            const pct = (n) => total ? (n / total * 100).toFixed(1) + '%' : '';
+            document.getElementById('straightPct').textContent = pct(stats.straight);
+            document.getElementById('deflectedPct').textContent = pct(stats.deflected);
+            document.getElementById('bouncedPct').textContent = pct(stats.bounced);
+            document.getElementById('statsNote').innerHTML =
+                '累计样本 <b>' + total + '</b> 个 α 粒子 · 每次发射重新取样';
         }
 
         // 更新滑块显示
@@ -1219,11 +1313,14 @@
             });
         });
 
-        // 核数切换：立即重排金核
-        document.querySelectorAll('input[name="nucleusCount"]').forEach(radio => {
-            radio.addEventListener('change', function() {
-                setupNuclei(parseInt(this.value));
-            });
+        // 核数输入（1~30）：立即重排金核。列数由 colsForCount() 自动决定（1~10 单列 / 11~20 两列 / 21~30 三列）
+        // 用 change 而不是 input：边打字边重排会让 3 → 30 的中间态（3 核单列）闪一下
+        const nucCountInput = document.getElementById('nucleusCount');
+        nucCountInput.addEventListener('change', function () {
+            setupNuclei(this.value);
+        });
+        nucCountInput.addEventListener('blur', function () {
+            setupNuclei(this.value);      // 失焦再夹紧一次：输入"99"后不按回车直接点画布也能纠正
         });
 
         // === 点击金原子核 → 新标签页打开金原子的微观结构 ===
@@ -1265,22 +1362,22 @@
         });
 
         // 点击金核 → 打开金原子结构模型
-        // 多个核（1/3/5）时点任意一个都跳到同一个页面 —— 它们都是金原子
+        // 多个核时点任意一个都跳到同一个页面 —— 它们都是金原子
         canvas.addEventListener('click', e => {
             if (!nucleusAt(toCanvasPos(e))) return;
             // 由用户点击直接触发 → 属于用户手势，不会被浏览器的弹窗拦截
             window.open(ATOM_MODEL_URL, '_blank');
         });
 
-        // 初始化：默认铺着金箔 + DEFAULT_NUCLEUS_COUNT 个金核，并同步金箔按钮文案
-        // 教学动线：先看到一片金箔 → 发射看到少数偏转/反弹 → 撤箔揭示金原子核
-        // 5 核的电子轨道相切拼成一堵"密不透风的墙"，却仍能被 α 粒子穿过 → 逼出"原子内部几乎全是空的"
-        // （选 5 核而非 1 核开场：一列核 + 5 条正对束同时反弹，"原子内部很空"的对比更强烈）
-        document.querySelectorAll('input[name="nucleusCount"]').forEach(radio => {
-            radio.checked = (parseInt(radio.value) === DEFAULT_NUCLEUS_COUNT);
-        });
+        // 初始化：默认铺着金箔 + DEFAULT_NUCLEUS_COUNT（27）个金核，并同步金箔按钮文案
+        // 教学动线：先看到一片金箔 → 发射看到"绝大多数直线、少数偏转、极少数反弹" → 撤箔揭示金原子核
+        // 27 个原子的电子轨道两向相切拼成一片"密不透风的墙"，却仍能被 α 粒子穿过
+        // → 逼出"原子内部几乎全是空的"。
+        // （默认给 27 个而不是 5 个：5 个位置太"特殊"，束场里大多数粒子根本没靠近过任何核）
+        document.getElementById('nucleusCount').value = DEFAULT_NUCLEUS_COUNT;
         setupNuclei(DEFAULT_NUCLEUS_COUNT);
         updateFoilBtn();
+        updateStats();
 
         // 动画循环
         function animate() {
@@ -1309,9 +1406,6 @@
                 if (Math.abs(foilTarget - foilAlpha) < 0.01) foilAlpha = foilTarget;
             }
             const nucleiAlpha = 1 - foilAlpha;   // 两者互补：箔在核不见，箔走核现身
-
-            // 绘制正对入射路径提示线（每个核一条）
-            drawAimLines(nucleiAlpha);
 
             // 金箔层画在核之前（箔是"背景中的一层物质"，核现身时压在它前面）
             drawFoil(foilAlpha);
