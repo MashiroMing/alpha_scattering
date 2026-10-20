@@ -654,6 +654,14 @@
         const Q_GOLD = 79;          // 金原子核电荷 +79e
         const SPEED_TAIL = 0.2;     // E > 5 MeV 后速度增长放缓（0=完全饱和，1=不衰减）
 
+        // ══ 轨迹尾长：按【空间长度】算，不按帧数 ═══════════════════════════
+        // 旧写法 maxTrail = 帧数 × SUB，1 MeV（2.5px/帧）时尾巴只有 40×2.5 ≈ 99px ——
+        // 粒子在核处转弯后，弯的那一段几乎立刻被裁掉，画面上"看着没偏"。
+        // 改成固定的像素长度后，低速时自动多留点，转弯段始终完整可见。
+        const TRAIL_PX = { sparse: 420, dense: 260, extreme: 130 };
+        // 每帧记录的轨迹采样点数（与子步解耦）：4 点/帧 → 1 MeV 时点距 0.63px，肉眼仍平滑
+        const TRAIL_SAMPLES_PER_FRAME = 4;
+
         // 金原子核数组
         // 默认核数：单一真值来源。
         // 改这个值时必须同步改 HTML 里 #nucleusCount 的 value —— 探针会守住两处一致，
@@ -1003,8 +1011,13 @@
                 // 粒子半径：稀疏 4px / 密集 4px / 极密 1.5px（300 束 2.7px 间距下 1.5px 防止粒子体糊成一片）
                 this.radius = extremeMode ? 1.5 : 4;
                 this.trail = [];
-                // 轨迹点数：稀疏 100 / 密集 40 / 极密 30，再 ×SUB（与子步解耦，见 update）
-                this.maxTrail = (extremeMode ? 30 : (denseMode ? 40 : 100)) * SUB;
+                // 轨迹尾长按【空间长度】换算成点数（见 TRAIL_PX 的说明）：
+                // 每帧记 TRAIL_SAMPLES_PER_FRAME 个点，所以每点间距 = speed / 4 px。
+                // 结果：1 MeV 的尾巴从 99px 恢复到 260px（密集）/ 420px（稀疏），
+                //       5 MeV 的尾巴从 179px 变成 260px —— 两档都能看全"转弯"那一段。
+                const trailPx = extremeMode ? TRAIL_PX.extreme
+                              : (denseMode ? TRAIL_PX.dense : TRAIL_PX.sparse);
+                this.maxTrail = Math.max(32, Math.round(trailPx / (this.speed / TRAIL_SAMPLES_PER_FRAME)));
                 this.active = true;
                 this.result = null; // 'straight', 'deflected', 'bounced'
             }
@@ -1022,9 +1035,10 @@
                 }
                 const subN = dNear < NEAR_R ? NEAR_BOOST : SUB;
                 const dt = 1 / subN;
-                // 采样与子步解耦：每帧最多记 SUB 个轨迹点。
-                // 否则近核一帧 64 个点会瞬间吃光 maxTrail，轨迹在核附近被整段截断。
-                const sampleEvery = Math.max(1, Math.round(subN / SUB));
+                // 采样与子步解耦：每帧固定记 TRAIL_SAMPLES_PER_FRAME 个轨迹点。
+                // 旧写法每帧记 SUB 个点（近核 64 子步时一帧就吃掉一大截尾迹），
+                // 现在点距 = speed/4 px（1 MeV 时 0.63px），曲线看着更平滑，点数反而少一半。
+                const sampleEvery = Math.max(1, Math.round(subN / TRAIL_SAMPLES_PER_FRAME));
 
                 for (let s = 0; s < subN; s++) {
                     // 1a. 正电荷斥力叠加 + 子步长积分
