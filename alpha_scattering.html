@@ -2,6 +2,9 @@
 <html lang="zh-CN" data-page-node-id="R9fky0At93Ky1H7ndEwCC7">
 <head data-page-node-id="ZJvCfrCnVkhzpt91eXMGYO">
     <meta charset="UTF-8" data-page-node-id="gaCZQdspNQjmWjP1yEehdk">
+    <!-- 平板 / 手机必须显式声明：缺它时移动端会按 980px 虚拟宽度排版，
+         整页被缩小后再整体放大，画布与按钮全部糊成一团，且 tap 有 300ms 延迟 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>α粒子轰击金箔实验模拟</title>
     <style>
         /* ── 页面级布局变量 ─────────────────────────────────────────────
@@ -465,22 +468,99 @@
             color: #333;
             transform: translateY(-1px);
         }
-        /* ── 窄屏回退：放不下两栏时改为上下堆叠（说明区限高内滚） ───────── */
+        /* ══ 窄屏 / 平板回退：单栏堆叠，画布按可用宽铺满 ══════════════════
+           判据用【宽度】而不是设备类型 —— 桌面把窗口拖窄时同样需要单栏。
+
+           为什么不再用 --canvas-h 主导（v7.3 修）：
+             旧写法 --canvas-h: min(660px, 100vh - 150px) 让画布【高度】先定死
+             660px，宽度再由 4:3 反算 = 880px。iPad 竖屏只有 768px 宽 →
+             横向溢出 67~127px，右侧（反弹粒子飞出的方向）被裁掉，还多出一条
+             横向滚动条。现在反过来：宽度 = 可用宽，高度由 4:3 自动反算。
+
+           代价（几何决定的，无解）：平板上一屏装不下 —— iPad 横屏可视高约
+             690px，画布本身就有 733px（975×733，1200×900 等比）。页面因此
+             变成整体纵向滚动：先看画布，往下滑是控件与统计。
+
+           100% - 6px = 把画布左右各 3px 的边框让出来（.stage 内容宽 = 视口宽 - 40）。
+           不用 box-sizing: border-box 收编边框，是因为那会让内容区比例偏离
+           1200:900，画布位图被轻微拉伸（6/975 ≈ 0.6%，肉眼虽难辨但没必要）。
+
+           ⚠️ 宽度用 100%（相对 .stage 内容宽）而不是 100vw：桌面把窗口拖窄时会出现
+           纵向滚动条，100vw【含】滚动条宽度（约 15px），按 100vw 算会横向溢出十来像素。 */
         @media (max-width: 1080px) {
-            :root {
-                --canvas-h: min(660px, calc(100vh - 150px));
+            #canvas {
+                width: min(calc(100% - 6px), 1000px);
+                height: auto;
+                max-width: 100%;
             }
             .stage {
                 flex-direction: column;
                 align-items: center;
             }
             .side {
-                width: 100%;
+                width: min(100%, 1000px);
                 flex: 0 0 auto;
                 height: auto;
+                /* 单栏时右栏跟随文档流长高，栏内滚动没有意义（会套两层滚动） */
+                overflow: visible;
+                padding-right: 0;
             }
             .legend-body {
                 max-height: 340px;
+            }
+        }
+
+        /* ══ 触摸设备（平板 / 手机）：只改交互手感，不动版面几何 ══════════
+           判据 (hover: none) and (pointer: coarse) = 主输入是手指。
+           带触控板的笔记本是 pointer: fine → 不命中 → 桌面手感一个字节都不变。 */
+        @media (hover: none) and (pointer: coarse) {
+            /* 去掉 tap 的 300ms 双击等待与"双击缩放"（双指缩放仍然可用）；
+               同时禁止拖动滑块时选中一片正文 */
+            body {
+                touch-action: manipulation;
+                -webkit-text-size-adjust: 100%;
+            }
+            canvas, button, .beam-option span, .legend > summary, .signature {
+                -webkit-tap-highlight-color: transparent;
+            }
+            /* 触控目标放大到 ≈44px（手指比鼠标粗，10px 内边距+16px 字只有 40px） */
+            button { padding: 12px 16px; }
+            .beam-input { padding: 11px 10px; }
+            input[type="range"] { height: 30px; }
+            .beam-option span { padding: 9px 10px; }
+            .legend > summary { padding: 14px 16px; }
+
+            /* 触摸下没有 hover（点一下只会"粘住"伪类）：署名胶囊改成 tap 切换展开，
+               由页尾脚本切换 .open 类。
+               :not(.egg) 是必要的 —— 否则彩蛋态下 .author-full 会被这里重新撑开
+               （.weight 同为 0,3,0，靠源码顺序取胜，而本段在彩蛋规则之后）。 */
+            .signature.open:not(.egg),
+            .signature.open:not(.egg):hover {
+                background: rgba(255, 255, 255, 0.95);
+                color: #333;
+                box-shadow: 0 4px 14px rgba(0,0,0,0.2);
+            }
+            .signature.open:not(.egg) .author-full {
+                max-width: 260px;
+                opacity: 1;
+                margin-left: 10px;
+            }
+        }
+
+        /* 竖屏提示：只在触摸设备 + 竖屏出现（桌面 / 横屏 display:none，不占布局高度） */
+        .rotate-hint {
+            display: none;
+        }
+        @media (hover: none) and (pointer: coarse) and (orientation: portrait) {
+            .rotate-hint {
+                display: block;
+                margin: -2px 0 10px;
+                padding: 6px 14px;
+                color: #fff;
+                font-size: 14px;
+                background: rgba(0, 0, 0, 0.22);
+                border-radius: 14px;
+                letter-spacing: 0.2px;
             }
         }
     </style>
@@ -489,6 +569,8 @@
     <a class="home-link" href="index.html" data-page-node-id="HomeLinkAlpha001">← 原子探索史</a>
     <h1 data-page-node-id="ta57cO2c88AupOq3huudvX">🔬 α粒子轰击金箔实验模拟</h1>
     <div class="subtitle" data-page-node-id="TaqYSgX79BMPDbtfQPBTpG">卢瑟福散射实验 · 探索原子内部结构</div>
+    <!-- 竖屏才出现（桌面与横屏 display:none，不进布局高度） -->
+    <div class="rotate-hint">↻ 横屏使用：画布会更宽，实验说明也不用反复上下滑</div>
 
     <div class="stage">
         <canvas id="canvas" width="1200" height="900" data-page-node-id="YA5Cajix3oXcJRTEgkg36G"></canvas>
@@ -1339,8 +1421,11 @@
 
         // === 点击金原子核 → 新标签页打开金原子的微观结构 ===
         // 教学动线：核上写着 +79e，学生想知道"79 从哪来" → 点它 → 看到 79 个质子 + 79 个电子
-        // 命中半径 26px（核本体只有 12px，按本体判定课堂上很难点中）
-        const NUCLEUS_HIT_R = 26;
+        // 命中半径 26px（核本体只有 12px，按本体判定课堂上很难点中）；
+        // 触摸屏上手指的接触面比鼠标指针粗得多 → 放大到 40px，否则平板上几乎点不中。
+        const IS_TOUCH = window.matchMedia('(hover: none) and (pointer: coarse)').matches
+                      || (navigator.maxTouchPoints || 0) > 0;
+        const NUCLEUS_HIT_R = IS_TOUCH ? 40 : 26;
         const ATOM_MODEL_URL = 'atomic_model.html?element=Au';
 
         // 把鼠标事件坐标换算成画布内部坐标。
@@ -1380,7 +1465,10 @@
         canvas.addEventListener('click', e => {
             if (!nucleusAt(toCanvasPos(e))) return;
             // 由用户点击直接触发 → 属于用户手势，不会被浏览器的弹窗拦截
-            window.open(ATOM_MODEL_URL, '_blank');
+            const win = window.open(ATOM_MODEL_URL, '_blank');
+            // 兜底：部分平板浏览器（iPad Safari「阻止弹出式窗口」为默认值时）返回 null，
+            // 此时点了毫无反应、学生会以为"这个点不了" → 退化为当前页跳转
+            if (!win) location.href = ATOM_MODEL_URL;
         });
 
         // 初始化：默认铺着金箔 + DEFAULT_NUCLEUS_COUNT（27）个金核，并同步金箔按钮文案
@@ -1468,6 +1556,23 @@
 
             if (!sig || !egg) return;
             let last = -Infinity;   // 不能用 0：页面加载后 320ms 内 now-0 会误判为冷却中
+
+            /* 触摸设备没有 hover：悬停展开永远不触发，完整署名就看不到。
+               改成 tap 切换 .open（样式见 CSS 的 pointer: coarse 段）。
+               注意别顺手把彩蛋也塞进 tap —— 滚轮是桌面专属手势，此处不假装支持。 */
+            if (window.matchMedia('(hover: none) and (pointer: coarse)').matches) {
+                sig.title = '点击查看作者信息';
+                sig.addEventListener('click', () => {
+                    sig.classList.toggle('open');
+                    sig.title = sig.classList.contains('open') ? '点击收起' : '点击查看作者信息';
+                });
+                /* 展开后它是 fixed 定位的浮层，竖屏时会盖住右下角的「撤掉金箔 / 重置」。
+                   点屏幕上其他任何地方就收起 —— 用 pointerdown 捕获阶段，赶在按钮的
+                   click 之前完成收起，避免"点按钮时先被胶囊挡一下"。 */
+                document.addEventListener('pointerdown', (e) => {
+                    if (!sig.contains(e.target)) sig.classList.remove('open');
+                }, true);
+            }
 
             sig.addEventListener('mouseenter', () => { last = -Infinity; });
             sig.addEventListener('wheel', (e) => {

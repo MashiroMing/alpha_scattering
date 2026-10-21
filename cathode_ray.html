@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>阴极射线实验模拟</title>
     <style>
         /* ── 页面级布局变量 ─────────────────────────────────────────────
@@ -344,22 +344,91 @@
             opacity: 1;
             margin-left: 10px;
         }
-        /* ── 窄屏回退：放不下两栏时改为上下堆叠 ─────────────────────── */
+        /* ══ 窄屏 / 平板回退：单栏堆叠，画布按可用宽铺满 ══════════════════
+           判据用【宽度】而不是设备类型 —— 桌面把窗口拖窄时同样需要单栏。
+
+           为什么不再用 --canvas-h 主导（v7.3 与 α 页同步）：
+             旧写法先把画布【高度】定死 660px，宽度再由 4:3 反算 = 880px。
+             iPad 竖屏只有 768px 宽 → 横向溢出 67~127px，还多出一条横向滚动条。
+             现在反过来：宽度 = 可用宽，高度由 4:3 自动反算。
+
+           代价（几何决定，无解）：平板上一屏装不下 —— iPad 横屏可视高约 690px，
+             画布本身就有 733px（975×733，1200×900 等比）。页面因此变成整体纵向
+             滚动：先看装置图，往下滑是控件与说明。
+
+           100% - 6px = 让出画布左右各 3px 的边框（.stage 内容宽 = 视口宽 - 40）。
+           不用 100vw：桌面把窗口拖窄时会出纵向滚动条，100vw【含】滚动条宽度。
+           不用 box-sizing:border-box 收编边框：那会让内容区比例偏离 1200:900。 */
         @media (max-width: 1080px) {
-            :root {
-                --canvas-h: min(660px, calc(100vh - 150px));
+            #canvas {
+                width: min(calc(100% - 6px), 1000px);
+                height: auto;
+                max-width: 100%;
             }
             .stage {
                 flex-direction: column;
                 align-items: center;
             }
             .side {
-                width: 100%;
+                width: min(100%, 1000px);
                 flex: 0 0 auto;
                 height: auto;
+                /* 单栏时右栏跟随文档流长高，栏内滚动没有意义（会套两层滚动） */
+                overflow: visible;
+                padding-right: 0;
             }
             .legend-body {
                 max-height: 340px;
+            }
+        }
+
+        /* ══ 触摸设备（平板 / 手机）：只改交互手感，不动版面几何 ══════════
+           判据 (hover: none) and (pointer: coarse) = 主输入是手指。
+           带触控板的笔记本是 pointer: fine → 不命中 → 桌面手感一个字节都不变。 */
+        @media (hover: none) and (pointer: coarse) {
+            /* 去掉 tap 的 300ms 双击等待与"双击缩放"（双指缩放仍然可用） */
+            body {
+                touch-action: manipulation;
+                -webkit-text-size-adjust: 100%;
+            }
+            canvas, button, .mode-option span, .legend > summary, .signature {
+                -webkit-tap-highlight-color: transparent;
+            }
+            /* 触控目标放大到 ≈44px（手指比鼠标粗） */
+            button { padding: 12px 16px; }
+            input[type="range"] { height: 30px; }
+            .mode-option span { padding: 11px 6px; }
+            .legend > summary { padding: 14px 16px; }
+
+            /* 触摸下没有 hover（点一下只会"粘住"伪类）：署名胶囊改成 tap 切换展开，
+               由页尾脚本切换 .open 类。本页没有彩蛋，故不需要 :not(.egg)。 */
+            .signature.open,
+            .signature.open:hover {
+                background: rgba(255, 255, 255, 0.95);
+                color: #333;
+                box-shadow: 0 4px 14px rgba(0,0,0,0.2);
+            }
+            .signature.open .author-full {
+                max-width: 260px;
+                opacity: 1;
+                margin-left: 10px;
+            }
+        }
+
+        /* 竖屏提示：只在触摸设备 + 竖屏出现（桌面 / 横屏 display:none，不占布局高度） */
+        .rotate-hint {
+            display: none;
+        }
+        @media (hover: none) and (pointer: coarse) and (orientation: portrait) {
+            .rotate-hint {
+                display: block;
+                margin: -2px 0 10px;
+                padding: 6px 14px;
+                color: #fff;
+                font-size: 14px;
+                background: rgba(0, 0, 0, 0.22);
+                border-radius: 14px;
+                letter-spacing: 0.2px;
             }
         }
     </style>
@@ -369,6 +438,8 @@
 
     <h1>⚡ 阴极射线实验模拟</h1>
     <div class="subtitle">汤姆逊发现电子 · 原子能不能再分？</div>
+    <!-- 竖屏才出现（桌面与横屏 display:none，不进布局高度） -->
+    <div class="rotate-hint">↻ 横屏使用：画布会更宽，控件也不用反复上下滑</div>
 
     <div class="stage">
         <canvas id="canvas" width="1200" height="900"></canvas>
@@ -1049,6 +1120,23 @@
                     side.scrollTop += r.top - box.top;
                 }
             });
+        })();
+
+        /* 署名胶囊：桌面靠 :hover 展开，触摸设备没有 hover → 改成 tap 切换 .open
+           （样式见 CSS 的 pointer: coarse 段）。展开后它是 fixed 浮层，点屏幕其他
+           位置要能收起 —— 用 pointerdown 捕获阶段，赶在按钮的 click 之前完成收起。 */
+        (function () {
+            var sig = document.querySelector('.signature');
+            if (!sig) return;
+            if (!window.matchMedia('(hover: none) and (pointer: coarse)').matches) return;
+            sig.title = '点击查看作者信息';
+            sig.addEventListener('click', function () {
+                sig.classList.toggle('open');
+                sig.title = sig.classList.contains('open') ? '点击收起' : '点击查看作者信息';
+            });
+            document.addEventListener('pointerdown', function (e) {
+                if (!sig.contains(e.target)) sig.classList.remove('open');
+            }, true);
         })();
     </script>
 </body>

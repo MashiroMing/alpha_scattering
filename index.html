@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>原子结构探索史 · 模拟入口</title>
     <style>
         body {
@@ -266,6 +266,27 @@
             .tl-row { font-size: 14px; margin-top: 2px; line-height: 1.4; }
             .tl-k { flex-basis: 28px; font-size: 12px; }
             .note { font-size: 12px; margin-top: 6px; line-height: 1.4; }
+        }
+
+        /* ── 触摸设备（平板 / 手机）· 必须放在最后 ─────────────────────
+           上面两个矮屏档把 .tl-btn 的 padding 压到 4px 13px（≈30px 高），手指按偏
+           的概率很高 → 这里放大触控目标。同权重下靠源码顺序取胜，所以本段必须排在
+           矮屏档【之后】（v7.3 一开始放在了中间，结果被矮屏档盖掉）。
+
+           本页是纯 HTML【零脚本】（probe-index.js 断言 pageScriptCount === 0），
+           因此不能像其余五页那样用 tap 切换 .open 展开署名 —— 直接让完整署名常显：
+           隐藏「作者」、把完整文案撑开，一行 JS 都不用。 */
+        @media (hover: none) and (pointer: coarse) {
+            body {
+                touch-action: manipulation;
+                -webkit-text-size-adjust: 100%;
+            }
+            /* 42px 是量出来的：矮屏档把字号压到 13.5px 后，10px 内边距只有 42px，
+               差 2px 达不到 44 —— 再加 2px 上下内边距刚好越过。 */
+            .tl-btn { padding: 12px 18px; }
+            .signature { cursor: default; }
+            .signature .author-short { display: none; }
+            .signature .author-full { max-width: 260px; opacity: 1; margin-left: 0; }
         }
     </style>
 </head>

@@ -2,6 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>玻尔原子模型 · 三维电子运动</title>
     <style>
         body {
@@ -188,12 +189,83 @@
             .right-col { width: 1006px; }
             .ctrl-bar { width: 1006px; }
         }
+
+        /* ══ 窄屏 / 平板回退（≤1080）：画布与右栏都按可用宽铺满 ══════════
+           上面的 1800 断点只把两栏改成一栏，但三块仍写死 1006px ——
+           iPad 横屏可用宽只有 984px（视口 1024 - body 左右各 20），于是整页
+           横向溢出 22px、右侧被裁。这里把宽度改成"可用宽或 1006 取小"。
+
+           画布 1000×675 有内禀比例，height:auto 会按属性反算，不需要 aspect-ratio。
+           100% - 6px = 让出画布左右各 3px 的边框；不用 100vw（含滚动条宽度）。
+           ⚠️ 桌面 1600×900 走的是上面那个断点，本段不生效，一屏 918 的约束不动。 */
+        @media (max-width: 1080px) {
+            .stage { width: 100%; }
+            /* 左列宽度由画布决定：先给列定宽，画布再取 100% - 6px，
+               否则 canvas 的百分比宽度会先对着"内容撑出来的列宽"解析（循环依赖）。 */
+            .left-col { width: min(100%, 1006px); }
+            #canvas {
+                width: calc(100% - 6px);
+                height: auto;
+                max-width: 100%;
+            }
+            .ctrl-bar { width: 100%; }
+            .right-col { width: min(100%, 1006px); }
+            /* 能级图 336 + 光谱条 392 + 间距 12 = 740px，比单栏下卡片内容宽
+               （713 - 卡片左右 padding 24 = 689）还宽 51px → 竖屏时最右侧那条
+               纳光谱线被裁、整页多出 23px 横向滚动。小画布【不缩放】（里面的字
+               只有 11~12.5px，缩了必糊），改成允许换行：光谱条掉到能级图下一行。 */
+            .spec-row { flex-wrap: wrap; justify-content: center; }
+        }
+
+        /* ══ 触摸设备（平板 / 手机）：只改交互手感，不动版面几何 ══════════
+           判据 (hover: none) and (pointer: coarse) = 主输入是手指。 */
+        @media (hover: none) and (pointer: coarse) {
+            /* touch-action: none 落在画布上 —— 拖动旋转时别让页面跟着滚 */
+            body {
+                touch-action: manipulation;
+                -webkit-text-size-adjust: 100%;
+            }
+            canvas, .btn, .pt-cell, .signature {
+                -webkit-tap-highlight-color: transparent;
+            }
+            #canvas { touch-action: none; }
+            /* 触控目标放大到 ≈44px：控制条里的胶囊按钮原本只有 5px 上下内边距 */
+            .btn { padding: 11px 14px; }
+            .ctrl-bar { flex-wrap: wrap; padding: 10px 14px; }
+            .ctrl-bar input[type=range] { height: 30px; width: 140px; }
+            .pt-cell:active { transform: scale(0.93); }
+
+            /* 触摸下没有 hover：署名胶囊改成 tap 切换展开（页尾脚本切 .open） */
+            .signature.open,
+            .signature.open:hover {
+                background: rgba(255,255,255,0.95); color: #333;
+                box-shadow: 0 4px 14px rgba(0,0,0,0.2);
+            }
+            .signature.open .author-full { max-width: 260px; opacity: 1; margin-left: 10px; }
+        }
+
+        /* 竖屏提示：只在触摸设备 + 竖屏出现（桌面 / 横屏 display:none，不占布局高度） */
+        .rotate-hint { display: none; }
+        @media (hover: none) and (pointer: coarse) and (orientation: portrait) {
+            .rotate-hint {
+                display: block;
+                margin: -6px 0 10px;
+                padding: 6px 14px;
+                color: #fff;
+                font-size: 14px;
+                background: rgba(0, 0, 0, 0.22);
+                border-radius: 14px;
+                letter-spacing: 0.2px;
+            }
+        }
     </style>
 </head>
 <body>
     <a class="home-link" href="index.html">← 原子探索史</a>
     <h1>🔮 玻尔原子模型 · 三维电子运动</h1>
     <div class="subtitle">电子在<b>不同倾斜的轨道平面</b>上绕核运动 · 定态 → 跃迁 → 氢原子线状光谱</div>
+    <!-- 竖屏才出现（桌面与横屏 display:none，不进布局高度） -->
+    <div class="rotate-hint">↻ 横屏使用：画布与三张卡片并排，光谱条也看得清</div>
 
     <div class="stage">
         <div class="left-col">
@@ -1073,6 +1145,29 @@
         });
         window.addEventListener('mouseup', function () { dragging = false; canvas.classList.remove('dragging'); });
 
+        /* 触摸设备不会发 mousedown：iPad 上原本根本转不动这个三维视图。
+           补一套 touch 事件 —— 单指拖动等价于鼠标拖动；touchmove 里 preventDefault
+           掉页面滚动（CSS 也给 #canvas 设了 touch-action: none 作双保险）。
+           双指时直接 return，不拦：留给浏览器做页面缩放。 */
+        canvas.addEventListener('touchstart', function (e) {
+            if (e.touches.length !== 1) return;
+            dragging = true;
+            lastX = e.touches[0].clientX; lastY = e.touches[0].clientY;
+            canvas.classList.add('dragging');
+        }, { passive: true });
+        canvas.addEventListener('touchmove', function (e) {
+            if (!dragging || e.touches.length !== 1) return;
+            e.preventDefault();          // 必须非 passive，否则页面会跟着滚
+            var t = e.touches[0];
+            yaw += (t.clientX - lastX) * 0.006;
+            pitch += (t.clientY - lastY) * 0.006;
+            pitch = Math.max(-1.25, Math.min(1.25, pitch));
+            lastX = t.clientX; lastY = t.clientY;
+        }, { passive: false });
+        canvas.addEventListener('touchend', function () {
+            dragging = false; canvas.classList.remove('dragging');
+        });
+
         document.getElementById('btnSpin').addEventListener('click', function () {
             autoSpin = !autoSpin;
             this.classList.toggle('on', autoSpin);
@@ -1145,6 +1240,23 @@
             freeze: function () { paused = true; autoSpin = false; },
             step: function (dt) { simT += dt; updateTrans(dt); pumpSeq(); draw(); }
         };
+
+        /* 署名胶囊：桌面靠 :hover 展开，触摸设备没有 hover → 改成 tap 切换 .open
+           （样式见 CSS 的 pointer: coarse 段）。展开后它是 fixed 浮层，点屏幕其他
+           位置要能收起 —— 用 pointerdown 捕获阶段，赶在按钮的 click 之前收起。 */
+        (function () {
+            var sig = document.querySelector('.signature');
+            if (!sig) return;
+            if (!window.matchMedia('(hover: none) and (pointer: coarse)').matches) return;
+            sig.title = '点击查看作者信息';
+            sig.addEventListener('click', function () {
+                sig.classList.toggle('open');
+                sig.title = sig.classList.contains('open') ? '点击收起' : '点击查看作者信息';
+            });
+            document.addEventListener('pointerdown', function (e) {
+                if (!sig.contains(e.target)) sig.classList.remove('open');
+            }, true);
+        })();
     </script>
 </body>
 </html>
