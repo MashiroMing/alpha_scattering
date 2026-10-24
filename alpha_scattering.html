@@ -642,7 +642,8 @@
                 <div class="legend-body">
                     <ul>
                         <li><strong data-page-node-id="clickHint">👆 撤掉金箔后，点击金色的原子核</strong>，看看金原子的内部结构——会打开「玻尔原子模型 · 电子分层排布」，里面能看到核内的 <strong>79 个质子</strong> 和 <strong>118 个中子</strong>，以及核外 79 个电子的分层排布。<span style="color:#8a8f96;">（金箔铺着时核被挡住，点不到；撤掉金箔后鼠标移到金核上会变成手指形状，点一下即可。新标签页打开，本页实验结果不会丢）</span></li>
-                        <li><strong>金箔怎么摆：</strong>α 粒子束从左侧射向金箔，<strong>入射角可在 −60°~+60° 调节</strong>（整个束场统一倾斜）；金原子核数可在 <strong>1 ~ 30</strong> 之间自由设定，<strong>列数自动跟着核数走</strong>：1~10 个 → 单列，11~20 个 → 两列，21~30 个 → 三列，每列的核在竖直方向均匀铺开。默认 27 个 = <strong>3 列 × 9 行</strong>，就是金箔的截面：沿入射方向排 3 层，粒子会连续穿过三层原子。</li>
+                        <li><strong>金箔怎么摆：</strong>α 粒子束从左侧射向金箔，<strong>入射角可在 −60°~+60° 调节</strong>（整个束场统一倾斜）；金原子核数可在 <strong>1 ~ 30</strong> 之间自由设定，<strong>列数自动跟着核数走</strong>：1~10 个 → 单列，11~20 个 → 两列，21~30 个 → 三列，每列的核在竖直方向均匀铺开、<strong>相邻列错开半格</strong>（三角网）。默认 27 个 = <strong>3 列 × 9 行</strong>，就是金箔的截面：沿入射方向排 3 层，粒子会连续穿过三层原子。</li>
+                        <li><strong>为什么是三角网而不是方形格子：</strong>金是<strong>面心立方最密堆积</strong>（A1 / Cu 型，配位数 12、空间利用率 74.05%；体心立方是钠、钾、铁，简单立方只有钋）。本页画的是它<strong>最密的 (111) 面</strong>——那一层是三角网，每个原子与面内 <strong>6 个</strong>邻居相切（完整晶体 12 个近邻，一半在这一层）。<span style="color:#8a8f96;">（方形格子会让人读成"简单立方"，金不是简单立方）</span></li>
                         <li><span style="color:#a8b0b8;" data-page-node-id="electronShellDesc">浅色虚线圆</span>表示金原子的<strong>最外层电子轨道</strong>（玻尔模型）——仅作视觉展示，不影响物理计算；α 粒子实际只与金核（+79e）的库仑斥力作用。</li>
                         <li><span style="color:#e8890c; font-weight:bold;" data-page-node-id="3LZKhuQnokn1tyAwPcDFVP">橙色 = 被弹回来的粒子</span>（出射方向与入射方向夹角 ≥ 90°）。<strong>颜色是它飞出去之后才变橙的</strong>——发射前没有任何一条束被"安排"去撞核。</li>
                         <li><strong>三种结果：</strong>从核间空隙穿过的束几乎<strong>直线通过</strong>；从核旁掠过的束受库仑斥力<strong>偏转</strong>；极少数擦得极近的束被<strong>弹回</strong>来。</li>
@@ -700,15 +701,21 @@
         //     某一层上"擦得很近"的那次会把粒子甩出去 —— 反弹因此是【算出来的】，
         //     不再是"把某条束吸附到穿过核心的直线上"这种预设特判。
         //   · 竖直排【多行】→ 束场里每个位置都有邻居，样本不再只落在少数特殊位置上。
-        // 阵列间距 100px 同时决定"最外层电子轨道半径 = 50px"（相邻原子的轨道相切 → 密实金箔）。
-        const LATTICE_SPACING = 100;      // 列间距（沿入射方向）
-        const ROW_SPAN = 800;             // 竖直铺开的总跨度：y ∈ [50, 850]
-        const COLUMN_MAX_GAP = 150;       // 单列且核很少时，竖直间距最多放到 150px（旧版观感）
+        // 【金的晶体结构：面心立方最密堆积（A1 / Cu 型）】
+        //   金 a = 4.078 Å、每胞 4 个原子、配位数 12、空间利用率 74.05%；
+        //   体心立方（A2）是 Na / K / α-Fe / Cr / W，简单立方只有 Po —— 金都不是。
+        //   本页画的是它的【(111) 最密堆积面】截面：该面是**三角（六方）点阵**，
+        //   面内每个原子与 6 个邻居相切（完整晶体 12 个近邻，一半就在这一层）。
+        //   ⚠️ 不要再摆成"列距 = 行距"的方形格子：方格子会被读成简单立方，
+        //      而且面密度比真实最密面低 13.4%（方形 1/d² vs 三角 2/(√3 d²)）。
+        const ROW_SPAN = 800;             // 竖直方向（含列间错位）的总跨度：y ∈ [50, 850]
+        const MAX_GAP = 150;              // 最近邻间距的上限（核很少时否则会被拉到画布两端）
         const MIN_NUCLEI = 1;
         const MAX_NUCLEI = 30;
 
         // 金原子最外层电子轨道半径（玻尔模型）：仅作视觉展示，不影响物理计算
-        let electronShellRadius = LATTICE_SPACING / 2;
+        // = 最近邻间距的一半 → 相邻原子的轨道相切（真实金晶体里原子确实彼此紧邻）
+        let electronShellRadius = MAX_GAP / 2;
         // 金箔半宽 = 原子阵列的外轮廓（含最外侧那圈电子轨道），由 setupNuclei 维护
         let foilHalfWidth = 150;
         // 当前阵列的布局参数（setupNuclei 写入，绘制与探针都读它）
@@ -776,26 +783,35 @@
             const rem = count % cols;
             for (let c = 0; c < cols; c++) perCol.push(base + (c < rem ? 1 : 0));
 
-            // 竖直间距：所有列共用同一个行距（保证"列对齐"），并按最多的那列自适应。
-            // 行数越多行距越密，但单列且核很少时最多放到 150px —— 否则 2 个核会被拉到画布两端。
+            // 最近邻间距 nn：同列相邻核的竖直距离 = nn，相邻列再沿 y 错开 nn/2，
+            // 于是"斜向邻居"的距离也是 nn —— 这就是等边三角网（面心立方 (111) 面）。
+            // 多列时要为错位多留半格，所以用 (rows − 1) + 0.5 作分母，保证含错位的总高 = ROW_SPAN。
             const rows = Math.max.apply(null, perCol);
-            const gap = rows > 1 ? Math.min(COLUMN_MAX_GAP, ROW_SPAN / (rows - 1)) : COLUMN_MAX_GAP;
+            const staggered = cols > 1;
+            const units = (rows - 1) + (staggered ? 0.5 : 0);
+            const nn = units > 0 ? Math.min(MAX_GAP, ROW_SPAN / units) : MAX_GAP;
+            // 等边三角网的列距 = nn·√3/2（三角网的两列之间是"行高"，不是边长）
+            const colGap = (nn * Math.sqrt(3)) / 2;
 
-            // 电子轨道半径 = 行距的一半（竖直相邻相切）；多列时再受列距约束（横向也相切）
-            electronShellRadius = (cols > 1 ? Math.min(gap, LATTICE_SPACING) : gap) / 2;
-            foilHalfWidth = ((cols - 1) * LATTICE_SPACING) / 2 + electronShellRadius;
+            electronShellRadius = nn / 2;                       // 轨道半径 = 半个最近邻距 → 相切
+            foilHalfWidth = ((cols - 1) * colGap) / 2 + electronShellRadius;
 
             for (let c = 0; c < cols; c++) {
-                const x = cx + (c - (cols - 1) / 2) * LATTICE_SPACING;
+                const x = cx + (c - (cols - 1) / 2) * colGap;
                 const n = perCol[c];
-                // 每列以 cy 为中心竖直铺开（核数不同的列也保持同一中心线）
-                const top = cy - ((n - 1) * gap) / 2;
+                const y0 = staggered && (c % 2) ? nn / 2 : 0;   // 奇数列下沉半格（错位）
                 for (let r = 0; r < n; r++) {
-                    nuclei.push({ x: x, y: top + r * gap });
+                    nuclei.push({ x: x, y: y0 + r * nn });
                 }
             }
+            // 整片阵列竖直居中（各列核数不等时，逐列居中会整体偏心 → 统一按包围盒居中）
+            let minY = Infinity, maxY = -Infinity;
+            nuclei.forEach(nuc => { if (nuc.y < minY) minY = nuc.y; if (nuc.y > maxY) maxY = nuc.y; });
+            const dy = cy - (minY + maxY) / 2;
+            nuclei.forEach(nuc => { nuc.y += dy; });
 
-            latticeLayout = { count: count, cols: cols, rows: rows, gap: gap, perCol: perCol };
+            latticeLayout = { count: count, cols: cols, rows: rows, gap: nn,
+                              colGap: colGap, staggered: staggered, perCol: perCol };
 
             // 输入框与提示同步（手填越界时回显夹紧后的值）
             const input = document.getElementById('nucleusCount');
@@ -872,7 +888,9 @@
                 }
 
                 // 金原子最外层电子轨道（玻尔模型）：浅灰白虚线圆
-                // 相邻原子半径取核间距的一半 → 电子轨道【相切】，模拟固态金箔中原子紧密堆积
+                // 半径 = 最近邻间距的一半 → 相邻原子的轨道【相切】。阵列本身是三角网点，
+                // 对应面心立方最密堆积的 (111) 面：面内每个原子与 6 个邻居相切
+                // （完整晶体里每个金原子有 12 个近邻，其中一半就在这一层）。
                 // 仅作视觉展示，不参与物理计算（α粒子实际只与金核的库仑力作用）
                 ctx.strokeStyle = 'rgba(200, 210, 220, 0.55)';
                 ctx.lineWidth = 1;
@@ -1292,7 +1310,7 @@
         }
 
         // ══ 每次发射的横向相位（抽样）════════════════════════════════════
-        // 为什么要随机：27 个核排成规则晶格，如果束场永远落在同一组 y 上，
+        // 为什么要随机：27 个核排成规则三角网，如果束场永远落在同一组 y 上，
         //   每条束的碰撞参数 b 就固定不变 —— 连发 100 次结果逐字节相同，那不是"统计"，
         //   只是把同一张图重画 100 遍。
         // 做法：每次发射把【整片束场】沿竖直方向平移一个 [0, 晶格间距) 的随机量。
